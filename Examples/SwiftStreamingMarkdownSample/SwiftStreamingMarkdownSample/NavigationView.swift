@@ -41,7 +41,17 @@ struct NavigationView: View {
           }
         }
       }
-      .navigationTitle("Demonstrations")
+      .navigationTitle("Markdown Demos")
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          NavigationLink {
+            SettingsView()
+          } label: {
+            Image(systemName: "gearshape")
+          }
+          .accessibilityLabel("Settings")
+        }
+      }
     }
     .task {
       guard isLoading else { return }
