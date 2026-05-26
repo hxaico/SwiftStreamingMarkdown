@@ -1,0 +1,275 @@
+//
+//  Copyright © 2025 Microsoft. All rights reserved.
+//
+
+import Foundation
+import Markdown
+import SwiftUI
+import UniformTypeIdentifiers
+
+extension Markdown.Text: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    return NSMutableAttributedString(string: self.string).mergingAttributes(attributeContainer)
+  }
+}
+
+extension Markdown.Emphasis: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    let str = NSMutableAttributedString()
+    var newContainer = attributeContainer
+    if let currentTypography = attributeContainer[.typography] as? Typography {
+      let italicTypography = currentTypography.italicVariant
+      newContainer[.typography] = italicTypography
+      newContainer[.font] = italicTypography.uiFont
+      newContainer[.kern] = italicTypography.preferredLetterSpacing
+    } else {
+      newContainer[.font] = config.inlineStyle.emphasisTextFont.uiFont
+      newContainer[.kern] = config.inlineStyle.emphasisTextFont.preferredLetterSpacing
+    }
+    self.inlineConvertibleChildren.forEach { convertible in
+      str.append(convertible.convert(attributeContainer: newContainer, config: config, colorScheme: colorScheme))
+    }
+    return str
+  }
+}
+
+extension Markdown.Strong: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    let str = NSMutableAttributedString()
+    var newContainer = attributeContainer
+    if let currentTypography = attributeContainer[.typography] as? Typography {
+      let boldTypography = currentTypography.boldVariant
+      newContainer[.typography] = boldTypography
+      newContainer[.font] = boldTypography.uiFont
+      newContainer[.kern] = boldTypography.preferredLetterSpacing
+    } else {
+      newContainer[.font] = config.inlineStyle.boldTextFont.uiFont
+      newContainer[.kern] = config.inlineStyle.boldTextFont.preferredLetterSpacing
+    }
+    if self.parent is Paragraph && self.indexInParent == 0 && self.parent?.parent is ListItem && parent?.indexInParent == 0 {
+      newContainer[.foregroundColor] = config.inlineStyle.boldTextColor
+    }
+    self.inlineConvertibleChildren.forEach { convertible in
+      str.append(convertible.convert(attributeContainer: newContainer, config: config, colorScheme: colorScheme))
+    }
+    return str
+  }
+}
+
+extension Markdown.Strikethrough: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    let str = NSMutableAttributedString()
+    var container = attributeContainer
+    container[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+    container[.strikethroughColor] = container[.foregroundColor]
+    self.inlineConvertibleChildren.forEach { convertible in
+      str.append(convertible.convert(attributeContainer: container, config: config, colorScheme: colorScheme))
+    }
+    return str
+  }
+}
+
+extension Markdown.Link: InlineConvertible {
+  var isAttachmentCitation: Bool {
+    self.plainText == InlineCitationConstants.citationMarkerValue
+  }
+
+  private func isInlineCitation(fixURLDoubleEncoded: Bool) -> Bool {
+    guard let destination = self.destination,
+          let urlWithMarker = self.createURL(from: destination, fixDoubleEncoded: fixURLDoubleEncoded),
+          let components = URLComponents(url: urlWithMarker, resolvingAgainstBaseURL: true)
+    else {
+      return false
+    }
+    let queryParam = components.queryItems?.first(
+      where: {
+        $0.name == InlineCitationConstants.citationMarkerQueryParam && $0.value == InlineCitationConstants.citationMarkerValue
+      }
+    )
+    return queryParam != nil
+  }
+
+  private func createURL(from string: String, fixDoubleEncoded: Bool) -> URL? {
+    if fixDoubleEncoded {
+      return URL.fromMixedEncodingString(string)
+    } else {
+      return URL(string: string)
+    }
+  }
+
+  /// Checks if this link uses the `copilot-action://` URL scheme.
+  ///
+  /// Copilot action links are special action links that trigger in-app actions rather than opening external URLs.
+  /// They are rendered with dotted underlines to visually distinguish them from regular hyperlinks,
+  /// using the paragraph text color instead of the accent link color.
+  ///
+  /// - Returns: `true` if the link's destination has the `copilot-action` scheme (case-insensitive).
+  private var isCopilotActionLink: Bool {
+    guard let destination = self.destination,
+          let url = URL(string: destination)
+    else {
+      return false
+    }
+    return url.isCopilotActionLink
+  }
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    var container = attributeContainer
+
+    func buildAttributedString() -> NSMutableAttributedString {
+      let str = NSMutableAttributedString()
+      self.inlineConvertibleChildren.forEach { convertible in
+        str.append(convertible.convert(attributeContainer: container, config: config, colorScheme: colorScheme))
+      }
+      return str
+    }
+
+    guard let destination = self.destination,
+          let url = self.createURL(from: destination, fixDoubleEncoded: config.fixURLDoubleEncoded),
+          var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+    else {
+      // Not a valid URL, return plain text
+      return buildAttributedString()
+    }
+
+    // Handle copilot action links (copilot-action:// scheme) as inline attributed text.
+    // Rendered as regular text with a dotted underline so the text wraps naturally
+    // with the paragraph, unlike NSTextAttachment which is an atomic inline element.
+    // Tap handling works via the existing textView(_:shouldInteractWith URL:) delegate.
+    if self.isCopilotActionLink {
+      // Validate URL structure - copilot-action:// URLs must have a host (action name)
+      // to ensure well-formed action links. Malformed URLs fall back to regular link styling.
+      guard url.host != nil else {
+        return buildAttributedString()
+      }
+
+      // Get text color from container to match paragraph text (not accent link color)
+      let textColor: UIColor
+      if let containerColor = container[.foregroundColor] as? UIColor {
+        textColor = containerColor
+      } else {
+        textColor = config.paragraphStyle.textColor
+      }
+
+      // Set link attribute to enable tap handling via shouldInteractWith URL: delegate
+      container[.link] = url
+      // Dotted underline to visually distinguish from regular hyperlinks
+      container[.underlineStyle] = NSUnderlineStyle.single.union(.patternDot).rawValue
+      // Lighter underline color
+      container[.underlineColor] = config.inlineStyle.actionLinkUnderlineColor
+      // Use paragraph text color instead of accent link color
+      container[.foregroundColor] = textColor
+      return buildAttributedString()
+    }
+
+    if self.isInlineCitation(fixURLDoubleEncoded: config.fixURLDoubleEncoded) {
+      if self.isAttachmentCitation {
+        // Extract title from URL query parameters for new attachment citation format
+        if let attachmentData = InlineAttachmentData(linkDestination: destination, fixURLDoubleEncoded: config.fixURLDoubleEncoded),
+           let citationAttachment = InlineCitationAttachment(citationData: attachmentData) {
+
+          // Create attributed string with the citation attachment
+          let attributedString = NSMutableAttributedString()
+          attributedString.append(NSAttributedString(attachment: citationAttachment))
+
+          return attributedString
+        }
+        // Fallback to empty string if we can't extract the title
+        return NSMutableAttributedString(string: "")
+      } else {
+        // Is a Citation link
+        components.queryItems?.removeAll(
+          where: {
+            $0.name == InlineCitationConstants.citationMarkerQueryParam && $0.value == InlineCitationConstants.citationMarkerValue
+          }
+        )
+        if (components.queryItems ?? []).isEmpty {
+          components.queryItems = nil
+        }
+
+        if let url = components.url {
+          container[.link] = url
+        }
+
+        container[.baselineOffset] = -2
+        if colorScheme == .dark {
+          container[.font] = config.inlineStyle.citationFontNight.uiFont
+        } else {
+          container[.font] = config.inlineStyle.citationFontDay.uiFont
+        }
+        return buildAttributedString()
+      }
+    } else {
+      // Is a real link, provided as markdown
+      container[.link] = url
+      container[.font] = config.inlineStyle.linkTextFont.uiFont
+      container[.kern] = config.inlineStyle.linkTextFont.preferredLetterSpacing
+      container[.foregroundColor] = config.inlineStyle.linkTextColor
+      container[.underlineStyle] = []
+      return buildAttributedString()
+    }
+  }
+}
+
+extension Markdown.SoftBreak: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    return NSMutableAttributedString(string: "\n").mergingAttributes(attributeContainer)
+  }
+}
+
+extension Markdown.LineBreak: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    return NSMutableAttributedString(string: "\n").mergingAttributes(attributeContainer)
+  }
+}
+
+extension Markdown.InlineCode: InlineConvertible {
+
+  var isInlineLatex: Bool {
+    return self.code.hasPrefix(LaTexPreProcessorImpl.inlineCodePrefix) && self.code.hasSuffix(LaTexPreProcessorImpl.inlineCodeSuffix)
+  }
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    var codeContent = self.code
+    if self.isInlineLatex {
+      codeContent = String(self
+        .code
+        .dropFirst(LaTexPreProcessorImpl.inlineCodePrefix.count)
+        .dropLast(LaTexPreProcessorImpl.inlineCodeSuffix.count))
+      let font = attributeContainer[NSAttributedString.Key.font] as? UIFont ?? config.paragraphStyle.textFont.uiFont
+      let textColor = config.paragraphStyle.textColor
+      let attachmentData = LatexAttachmentData(latex: codeContent, fontSize: font.pointSize, textColor: textColor.toHexString())
+      let encoder = JSONEncoder()
+      if let payload = try? encoder.encode(attachmentData) {
+        let attachment = NSTextAttachment(data: payload, ofType: UTType.data.identifier)
+        return NSMutableAttributedString(attachment: attachment)
+      }
+    }
+    var container = attributeContainer
+    container[.font] = config.inlineStyle.codeTextFont.uiFont
+    container[.foregroundColor] = config.inlineStyle.codeTextColor
+    container[.backgroundColor] = config.inlineStyle.codeBackgroundColor
+    container[.underlineStyle] =  NSUnderlineStyle.patternDot.rawValue
+    container[.underlineColor] = config.inlineStyle.codeUnderlineColor
+    return NSMutableAttributedString(string: codeContent).mergingAttributes(container)
+  }
+}
+
+extension Markdown.Table.Cell: InlineConvertible {
+
+  func convert(attributeContainer: NSAttributeContainer, config: MarkdownRenderConfig, colorScheme: ColorScheme) -> NSMutableAttributedString {
+    let str = NSMutableAttributedString()
+    self.inlineConvertibleChildren.forEach { convertible in
+      str.append(convertible.convert(attributeContainer: attributeContainer, config: config, colorScheme: colorScheme)
+        .removingAllOccurrences(of: MarkdownConstants.openingInlineLatexMarker)
+        .removingAllOccurrences(of: MarkdownConstants.closingInlineLatexMarker))
+    }
+    return str
+  }
+}

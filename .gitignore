@@ -1,19 +1,8 @@
 .DS_Store
-
-# Xcode / SwiftPM
-.build/
+/.build
+/Packages
+xcuserdata/
 DerivedData/
-DemoApp/DerivedData/
-*.xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
-DemoApp/*.xcodeproj/
-
-# Generated package resources
-Sources/StreamingMarkdown/Resources/StreamingFixtures/
-
-# Generated artifacts
-captures/
-reports/
-tmp/
-out/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
