@@ -5,9 +5,9 @@
 import SwiftUI
 
 @available(iOS 18.0, *)
-public struct VariableDurationFadeInTextTransition: Transition {
+struct VariableDurationFadeInTextTransition: Transition {
 
-  public static var properties: TransitionProperties {
+  static var properties: TransitionProperties {
     TransitionProperties(hasMotion: true)
   }
 
@@ -17,14 +17,14 @@ public struct VariableDurationFadeInTextTransition: Transition {
 
   let totalDuration: TimeInterval
 
-  public init(totalGlyphs: Int, glyphDelay: TimeInterval, glyphDuration: TimeInterval) {
+  init(totalGlyphs: Int, glyphDelay: TimeInterval, glyphDuration: TimeInterval) {
     self.totalGlyphs = totalGlyphs
     self.glyphDelay = glyphDelay
     self.glyphDuration = glyphDuration
     self.totalDuration = max(0, Double(totalGlyphs - 1) * glyphDelay) + glyphDuration
   }
 
-  public func body(content: Content, phase: TransitionPhase) -> some View {
+  func body(content: Content, phase: TransitionPhase) -> some View {
     let renderer = VariableDurationFadeInTextRenderer(elapsedTime: phase.isIdentity ? self.totalDuration : 0, glyphCount: totalGlyphs, glyphDelay: glyphDelay, glyphDuration: glyphDuration)
     content.transaction { transaction in
       if !transaction.disablesAnimations {
@@ -37,8 +37,8 @@ public struct VariableDurationFadeInTextTransition: Transition {
 }
 
 @available(iOS 18.0, *)
-public struct FixedDurationFadeInTextTransition: Transition {
-  public static var properties: TransitionProperties {
+struct FixedDurationFadeInTextTransition: Transition {
+  static var properties: TransitionProperties {
     TransitionProperties(hasMotion: true)
   }
 
@@ -46,13 +46,13 @@ public struct FixedDurationFadeInTextTransition: Transition {
   let glyphDelay: TimeInterval
   let glyphDuration: TimeInterval
 
-  public init(duration: TimeInterval, glyphDelay: TimeInterval, glyphDuration: TimeInterval) {
+  init(duration: TimeInterval, glyphDelay: TimeInterval, glyphDuration: TimeInterval) {
     self.totalDuration = duration
     self.glyphDelay = glyphDelay
     self.glyphDuration = glyphDuration
   }
 
-  public func body(content: Content, phase: TransitionPhase) -> some View {
+  func body(content: Content, phase: TransitionPhase) -> some View {
     let renderer = FixedDurationFadeInTextRenderer(
       elapsedTime: phase.isIdentity ? self.totalDuration : 0,
       duration: self.totalDuration,
@@ -71,11 +71,11 @@ public struct FixedDurationFadeInTextTransition: Transition {
 }
 
 @available(iOS 18.0, *)
-public struct VariableDurationFadeInTextRenderer: TextRenderer, Animatable {
+struct VariableDurationFadeInTextRenderer: TextRenderer, Animatable {
 
   var elapsedTime: TimeInterval
 
-  public var animatableData: Double {
+  var animatableData: Double {
     get { elapsedTime }
     set { elapsedTime = newValue }
   }
@@ -84,14 +84,14 @@ public struct VariableDurationFadeInTextRenderer: TextRenderer, Animatable {
   let glyphDelay: TimeInterval
   let glyphDuration: TimeInterval
 
-  public init(elapsedTime: TimeInterval, glyphCount: Int, glyphDelay: TimeInterval, glyphDuration: TimeInterval) {
+  init(elapsedTime: TimeInterval, glyphCount: Int, glyphDelay: TimeInterval, glyphDuration: TimeInterval) {
     self.elapsedTime = elapsedTime
     self.glyphCount = glyphCount
     self.glyphDelay = glyphDelay
     self.glyphDuration = glyphDuration
   }
 
-  public func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
+  func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
     for (index, slice) in layout.flattenedRunSlices.enumerated() {
       let normalizedX = min(max(0, elapsedTime - Double(index) * glyphDelay) / glyphDuration, 1)
       ctx.opacity = UnitCurve.easeOut.value(at: normalizedX)
@@ -101,7 +101,7 @@ public struct VariableDurationFadeInTextRenderer: TextRenderer, Animatable {
 }
 
 @available(iOS 18.0, *)
-public struct FixedDurationFadeInTextRenderer: TextRenderer, Animatable {
+struct FixedDurationFadeInTextRenderer: TextRenderer, Animatable {
   var elapsedTime: TimeInterval
 
   let duration: TimeInterval
@@ -113,19 +113,19 @@ public struct FixedDurationFadeInTextRenderer: TextRenderer, Animatable {
     return UnitCurve.easeOut.value(at: normalizedX)
   }
 
-  public var animatableData: Double {
+  var animatableData: Double {
     get { elapsedTime }
     set { elapsedTime = newValue }
   }
 
-  public init(elapsedTime: TimeInterval, duration: TimeInterval, delay: TimeInterval, animationDuration: TimeInterval) {
+  init(elapsedTime: TimeInterval, duration: TimeInterval, delay: TimeInterval, animationDuration: TimeInterval) {
     self.elapsedTime = elapsedTime
     self.duration = duration
     self.delay = delay
     self.animationDuration = animationDuration
   }
 
-  public func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+  func draw(layout: Text.Layout, in context: inout GraphicsContext) {
     let numberOfGlyphs = layout.flattenedRunSlices.count
     guard numberOfGlyphs > 0 else {
       return

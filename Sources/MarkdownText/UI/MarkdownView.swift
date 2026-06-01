@@ -15,6 +15,11 @@ public struct MarkdownView: View {
   private let config: MarkdownRenderConfig
   @StateObject var controller: MarkdownViewController
 
+  /// Create a `MarkdownView`.
+  /// - Parameters:
+  ///   - text: The raw Markdown source to parse and render.
+  ///   - config: Render configuration. Defaults to `.default`.
+  ///   - listener: Optional listener that receives render and interaction events.
   public init(
     text: String,
     config: MarkdownRenderConfig = .default,
@@ -39,7 +44,7 @@ public struct MarkdownView: View {
   }
 }
 
-public final class MarkdownViewController: ObservableObject {
+final class MarkdownViewController: ObservableObject {
 
   @Published var renderable: RenderableDocument?
 
@@ -48,7 +53,7 @@ public final class MarkdownViewController: ObservableObject {
   
   let listener: MarkdownListener?
 
-  public init(config: MarkdownRenderConfig = .default, listener: MarkdownListener? = nil) {
+  init(config: MarkdownRenderConfig = .default, listener: MarkdownListener? = nil) {
     self.config = config
     self.listener = listener
   }
