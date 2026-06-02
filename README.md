@@ -6,7 +6,7 @@
 [![SwiftPM](https://img.shields.io/badge/SwiftPM-compatible-brightgreen.svg)](https://swift.org/package-manager/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A high-performance Markdown renderer for iOS, designed for both static markdown texts and LLM stream style where the source text grows token-by-token. 
+A high-performance Markdown renderer for iOS, designed for both static markdown texts and LLM stream style where the source text grows chunk-by-chunk. 
 
 - Built-in high-performance streaming-style text transitions for newly arrived glyphs
 - Native inline and block LaTeX math rendering backed by
@@ -139,14 +139,6 @@ The bundled `Kitchen Sink` demonstration in the sample app exercises every item 
 </table>
 
 
-
-## Requirements
-
-| Requirement | Minimum |
-| --- | --- |
-| iOS | 16.0 |
-| Swift | 5.9 |
-| Xcode | 16.0 |
 
 ## Installation
 
