@@ -157,7 +157,7 @@ var isFooEnabled: Bool
 
 ### Data Flow
 
-Streaming input is modeled as `AsyncSequence`. The package depends on [`AsyncExtensions`](https://github.com/sideeffect-io/AsyncExtensions) for helpful operators (channels, debouncing, multicasting, etc.). Use those over bridging to Combine.
+Streaming input is modeled as `AsyncSequence`. Prefer Swift's standard concurrency primitives and `AsyncStream`/`AsyncSequence` operators from the standard library over bridging to Combine.
 
 For new async subscriptions inside view-scoped code, bind the Task lifecycle to the owning type rather than creating an orphan `Task`. If a background loop must outlive a single render, factor it into a type with deterministic teardown.
 
