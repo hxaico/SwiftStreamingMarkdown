@@ -3,7 +3,6 @@
 //  Licensed under the MIT License. See LICENSE in the project root for license information.
 //
 
-import Foundation
 import SwiftStreamingMarkdown
 import SwiftUI
 import UIKit
@@ -16,29 +15,20 @@ enum RobotoTheme {
 
   // MARK: - Colors
 
-  /// Loads a named color from the `RobotoTheme` namespace in the main bundle's
-  /// asset catalog. Each color provides both a light and dark appearance, so
-  /// using the asset-backed `UIColor` lets the rendered markdown automatically
-  /// adapt when the user toggles dark mode.
-  private static func color(_ name: String) -> UIColor {
-    UIColor(named: "RobotoTheme/\(name)") ?? .systemPink
-  }
-
-  private static var pageForeground: UIColor { color("PageForeground") }
-  private static var mutedForeground: UIColor { color("MutedForeground") }
-  private static var accent: UIColor { color("Accent") }
-  private static var accentSoft: UIColor { color("AccentSoft") }
-  private static var boldEmphasis: UIColor { color("BoldEmphasis") }
-  private static var codeForeground: UIColor { color("CodeForeground") }
-  private static var codeBackground: UIColor { color("CodeBackground") }
-  private static var codeUnderline: UIColor { color("CodeUnderline") }
-  private static var tableHeaderBackground: UIColor { color("TableHeaderBackground") }
-  private static var tableBorder: UIColor { color("TableBorder") }
+  private static let pageForeground = Color("RobotoTheme/PageForeground")
+  private static let mutedForeground = Color("RobotoTheme/MutedForeground")
+  private static let accent = Color("RobotoTheme/Accent")
+  private static let accentSoft = Color("RobotoTheme/AccentSoft")
+  private static let boldEmphasis = Color("RobotoTheme/BoldEmphasis")
+  private static let codeForeground = Color("RobotoTheme/CodeForeground")
+  private static let codeBackground = Color("RobotoTheme/CodeBackground")
+  private static let codeUnderline = Color("RobotoTheme/CodeUnderline")
+  private static let tableHeaderBackground = Color("RobotoTheme/TableHeaderBackground")
+  private static let tableBorder = Color("RobotoTheme/TableBorder")
 
   /// Background applied around the rendered content to make the Roboto theme
   /// pop visually. Exposed so `DemonstrationView` can paint the scroll view.
-  /// Backed by the same dark-mode-aware asset as everything else.
-  static var pageBackground: Color { Color("RobotoTheme/PageBackground") }
+  static let pageBackground = Color("RobotoTheme/PageBackground")
 
   // MARK: - Fonts
 
