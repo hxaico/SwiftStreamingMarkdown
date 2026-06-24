@@ -3,6 +3,7 @@
 //  Licensed under the MIT License. See LICENSE in the project root for license information.
 //
 
+#if canImport(UIKit)
 import iosMath
 import SwiftUI
 import UIKit
@@ -77,7 +78,9 @@ class ParagraphUIView: UITextView {
   override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
     super.traitCollectionDidChange(previousTraitCollection)
     if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
-      InlineCitationAttachment.updateInterfaceStyle(traitCollection.userInterfaceStyle)
+      AppAppearance.$current.mutate { app in
+        app = traitCollection.userInterfaceStyle == .dark ? .dark : .light
+      }
     }
   }
 
@@ -108,7 +111,9 @@ class ParagraphUIView: UITextView {
   func setParagraphContents(_ newContents: NSMutableAttributedString, lineSpacing: CGFloat? = nil, animatedByWord: Bool) {
     // Keep the cached interface style up to date for citation preview rendering.
     // This runs on the main thread so it's safe to read traitCollection here.
-    InlineCitationAttachment.updateInterfaceStyle(traitCollection.userInterfaceStyle)
+    AppAppearance.$current.mutate { app in
+      app = traitCollection.userInterfaceStyle == .dark ? .dark : .light
+    }
 
     guard paragraphContents != newContents || self.lineSpacing != lineSpacing else {
       return
@@ -418,12 +423,7 @@ fileprivate extension NSMutableAttributedString {
   }
 }
 
-struct LatexAttachmentData: Codable {
-  let latex: String
-  let fontSize: CGFloat
-  let lightTextColor: String
-  let darkTextColor: String
-}
+// LatexAttachmentData struct is defined in Models/LatexAttachmentData.swift
 
 extension LatexAttachmentData {
   var resolvedTextColor: UIColor {
@@ -497,3 +497,4 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     return CGRect(x: 0, y: yOffset, width: mathLabel.bounds.width.rounded(.up), height: height)
   }
 }
+#endif
