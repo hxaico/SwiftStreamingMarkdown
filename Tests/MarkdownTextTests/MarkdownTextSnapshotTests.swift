@@ -6,7 +6,6 @@
 import Markdown
 @testable import SwiftStreamingMarkdown
 import SwiftUI
-import UIKit
 import XCTest
 
 @MainActor
