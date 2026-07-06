@@ -171,7 +171,8 @@ final class LaTexPreProcessorImpl: LaTexPreProcessor {
     matchingRules: [MarkdownParseOption.LatexMatching],
     customExtension: MarkdownPreprocessorProtocol?
   ) -> String {
-    let extended = customExtension?.preprocess(input) ?? input
+    let normalizedInput = input.replacingOccurrences(of: "\r\n", with: "\n")
+    let extended = customExtension?.preprocess(normalizedInput) ?? normalizedInput
     let closed = closeUnclosedDisplayMath(extended)
     let rules = Set(matchingRules)
     let result = processBlockMath(input: closed, rules: rules, customExtension: customExtension)
@@ -315,14 +316,22 @@ public enum MarkdownLatexSanitizer {
 
   public static func hasUnbalancedBraces(_ latex: String) -> Bool {
     var braceCount = 0
+    var isEscaped = false
     for char in latex {
-      if char == "{" {
-        braceCount += 1
-      } else if char == "}" {
-        braceCount -= 1
-        if braceCount < 0 {
-          return true
+      if char == "\\" {
+        isEscaped.toggle()
+      } else {
+        if !isEscaped {
+          if char == "{" {
+            braceCount += 1
+          } else if char == "}" {
+            braceCount -= 1
+            if braceCount < 0 {
+              return true
+            }
+          }
         }
+        isEscaped = false
       }
     }
     return braceCount != 0

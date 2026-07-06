@@ -59,8 +59,6 @@ struct SingleBlockView: View {
               .fixedSize(horizontal: true, vertical: true)
           }
           .fixedSize(horizontal: false, vertical: true)
-        } else {
-          EmptyView()
         }
       case .orderedList(_, let items):
         OrderedListView(items: items)

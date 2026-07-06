@@ -72,7 +72,6 @@ struct BlockMathView: UIViewRepresentable {
     label.sizeToFit()
     let rawSize = label.bounds.size
     guard rawSize.width.isFinite, rawSize.height.isFinite,
-          !rawSize.width.isNaN, !rawSize.height.isNaN,
           rawSize.width > 0, rawSize.height > 0 else {
       MathRenderDiagnostics.logBlockMath(source: "measuredSize/unrenderable", latex: latex)
       return nil
@@ -117,6 +116,10 @@ struct BlockMathView: NSViewRepresentable {
     }
     applyLatex(to: nsView)
     let size = nsView.intrinsicContentSize
+    guard size.width.isFinite, size.height.isFinite,
+          size.width > 0, size.height > 0 else {
+      return nil
+    }
     return CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up) + 1)
   }
 

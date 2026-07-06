@@ -130,7 +130,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     let size = label.intrinsicContentSize
     #endif
 
-    guard !size.width.isNaN, !size.height.isNaN, size.width.isFinite, size.height.isFinite,
+    guard size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
       MathRenderDiagnostics.logInlineMath(source: "attachmentBounds/fallback", latex: latex)
       return CGSize(width: 1, height: fontSize.rounded(.up))

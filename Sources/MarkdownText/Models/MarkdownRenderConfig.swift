@@ -309,7 +309,8 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
       lhs.textContextMenu == rhs.textContextMenu &&
       lhs.citationConfig == rhs.citationConfig &&
       lhs.blockSpacing == rhs.blockSpacing &&
-      lhs.codeBlockStyle == rhs.codeBlockStyle
+      lhs.codeBlockStyle == rhs.codeBlockStyle &&
+      type(of: lhs.preprocessor) == type(of: rhs.preprocessor)
   }
 
   public func hash(into hasher: inout Hasher) {
@@ -324,5 +325,10 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     hasher.combine(citationConfig)
     hasher.combine(blockSpacing)
     hasher.combine(codeBlockStyle)
+    if let preprocessor = preprocessor {
+      hasher.combine(ObjectIdentifier(type(of: preprocessor)))
+    } else {
+      hasher.combine(0)
+    }
   }
 }
