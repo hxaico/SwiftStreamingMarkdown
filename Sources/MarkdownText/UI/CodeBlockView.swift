@@ -48,6 +48,7 @@ private actor HighlightTaskManager: ObservableObject {
 }
 
 struct CodeBlockView: View {
+  @Environment(\.markdownConfig) var config: MarkdownRenderConfig
 
   let language: String
   let code: String
@@ -69,27 +70,57 @@ struct CodeBlockView: View {
     }
   }
 
+  private var codeBlockBg: Color {
+    config.codeBlockStyle.backgroundColor
+  }
+
+  private var codeBlockRadius: CGFloat {
+    config.codeBlockStyle.cornerRadius
+  }
+
+  private var codeBlockFonts: TextFonts {
+    config.codeBlockStyle.textFonts
+  }
+
+  private var codeBlockTextColor: Color {
+    config.codeBlockStyle.textColor
+  }
+
   @ViewBuilder
   var codeblock: some View {
     ScrollView(.horizontal) {
-      HStack(alignment: .top) {
+      Group {
         if #available(iOS 16.1, *) {  // Minimum version for HighlightSwift
-          Text(attributedString ?? AttributedString(code))
-            .font(Typography.codeTextFonts)
-            .transition(.opacity)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+          if let attributed = attributedString {
+            Text(attributed)
+              .transition(.opacity)
+          } else {
+            Text(code)
+              .foregroundStyle(codeBlockTextColor)
+              .transition(.opacity)
+          }
         } else {
           Text(code)
-            .font(Typography.codeTextFonts)
-            .foregroundStyle(Color.Theme.Component.CodeBlock.Foreground.FunctionParameter)
+            .foregroundStyle(codeBlockTextColor)
             .transition(.opacity)
         }
       }
-
-    }.transaction { transaction in
+      .font(codeBlockFonts)
+      .multilineTextAlignment(.leading)
+    }
+    .fixedSize(horizontal: false, vertical: true)
+    .transaction { transaction in
       // The horizontal scrollView resizing animation was causing the code block to animate
       // all janky.
       transaction.animation = nil
+    }
+    .onSizeChange { size in
+      MathRenderDiagnostics.logCodeBlockLayoutIfInteresting(
+        source: "codeblock/layout",
+        language: language,
+        code: code,
+        size: size
+      )
     }
     .padding(16)
   }
@@ -125,27 +156,12 @@ struct CodeBlockView: View {
       }.frame(maxWidth: .infinity)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-          Color.Theme.Component.CodeBlock.Background.Background750
-            .clipShape(.rect(
-              topLeadingRadius: 20,
-              bottomLeadingRadius: 0,
-              bottomTrailingRadius: 0,
-              topTrailingRadius: 20
-            ))
-        )
+        .codeBlockBackground(color: codeBlockBg, radius: codeBlockRadius, topRounded: true, bottomRounded: false)
       codeblock
-        .fixedSize(horizontal: false, vertical: true)
         .scrollIndicators(.automatic)
-        .background(Color.Theme.Component.CodeBlock.Background.Background750
-          .clipShape(.rect(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: 20,
-            bottomTrailingRadius: 20,
-            topTrailingRadius: 0
-          ))
-        )
-    }.onChange(of: copied, perform: { isCopied in
+        .codeBlockBackground(color: codeBlockBg, radius: codeBlockRadius, topRounded: false, bottomRounded: true)
+    }
+    .onChange(of: copied, perform: { isCopied in
       if isCopied {
         Task {
           try await Task.sleep(seconds: 3)
@@ -163,6 +179,24 @@ struct CodeBlockView: View {
         await updateAttributedString(code: code)
       }
     })
+  }
+}
+
+private extension View {
+  func codeBlockBackground(
+    color: Color,
+    radius: CGFloat,
+    topRounded: Bool,
+    bottomRounded: Bool
+  ) -> some View {
+    self.background(
+      color.clipShape(.rect(
+        topLeadingRadius: topRounded ? radius : 0,
+        bottomLeadingRadius: bottomRounded ? radius : 0,
+        bottomTrailingRadius: bottomRounded ? radius : 0,
+        topTrailingRadius: topRounded ? radius : 0
+      ))
+    )
   }
 }
 

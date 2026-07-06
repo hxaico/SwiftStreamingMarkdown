@@ -87,6 +87,7 @@ final class StreamedMarkdownController: ObservableObject {
         if Task.isCancelled { return }
         let renderable = await self.parser.parse(text: text, config: self.config)
         if Task.isCancelled { return }
+        MathRenderDiagnostics.logParseSummary(textLength: text.count, renderables: renderable.renderables)
         await MainActor.run {
           self.markdownToRender = renderable
         }

@@ -159,7 +159,7 @@ final class LaTexPreProcessorTests: XCTestCase {
     ```
 
     ```blockmath
-    \\text{Mass-Energy Equivalence: } E = mc^2
+    \\mathrm{Mass-Energy Equivalence: } E = mc^2
     ```
 
     ```blockmath
@@ -204,7 +204,7 @@ final class LaTexPreProcessorTests: XCTestCase {
     This double integral:
     - Sweeps across a rectangular region from `\\( x = 0 \\)` to `\\( \\pi \\)`, and `\\( y = 1 \\)` to `\\( e \\)`
     - Combines a sine of a product `\\( xy \\)`, a logarithmic denominator, and a cosine term multiplied by a polynomial
-    - Is a great example of how calculus can get delightfully `\\( \\text{tangled} \\)`
+    - Is a great example of how calculus can get delightfully `\\( \\mathrm{tangled} \\)`
     """
     XCTAssertEqual(processed, expected)
   }
@@ -218,7 +218,7 @@ final class LaTexPreProcessorTests: XCTestCase {
     - Therefore the ring’s acceleration is
       \\[
         a_{\\rm ring} = \\frac{F}{m} = (k-1)\\,g
-        \\quad\\text{(upward).}
+        \\quad\\mathrm{(upward).}
       \\]
     """
     let processed = preprocessor.processBlockMath(input: text)
@@ -230,7 +230,7 @@ final class LaTexPreProcessorTests: XCTestCase {
     - Therefore the ring’s acceleration is
       ```blockmath
         a_{\\rm ring} = \\frac{F}{m} = (k-1)\\,g
-        \\quad\\text{(upward).}
+        \\quad\\mathrm{(upward).}
       ```
     """
     XCTAssertEqual(expected, processed)
@@ -276,6 +276,45 @@ final class LaTexPreProcessorTests: XCTestCase {
     XCTAssertEqual(expected, processed)
   }
 
+  func testSanitizesBoxedPmodAndNotEquiv() {
+    let input = """
+    $$\\boxed{x=\\frac{1}{2}}$$
+    $$\\theta \\not\\equiv 0 \\pmod{2\\pi}$$
+    """
+    let processed = preprocessor.processBlockMath(input: input)
+    let expected = """
+    ```blockmath
+    x=\\frac{1}{2}
+    ```
+    ```blockmath
+    \\theta \\neq 0 (\\mathrm{mod}\\ 2\\pi)
+    ```
+    """
+    XCTAssertEqual(processed, expected)
+  }
+
+  func testSanitizesFracShorthand() {
+    let input = """
+    $$\\frac12 \\pm \\frac{i}{2}\\cot\\left(\\frac\\theta2\\right)$$
+    """
+    let processed = preprocessor.processBlockMath(input: input)
+    let expected = """
+    ```blockmath
+    \\frac{1}{2} \\pm \\frac{i}{2}\\cot\\left(\\frac{\\theta}{2}\\right)
+    ```
+    """
+    XCTAssertEqual(processed, expected)
+  }
+
+  func testShouldRenderBlockMathAllowsEscapedBraces() {
+    XCTAssertTrue(MarkdownLatexSanitizer.shouldRenderBlockMath("\\{1, 2\\}"))
+  }
+
+  func testShouldRenderBlockMathIgnoresRightArrowCommand() {
+    XCTAssertTrue(MarkdownLatexSanitizer.shouldRenderBlockMath("a \\rightarrow b"))
+    XCTAssertTrue(MarkdownLatexSanitizer.shouldRenderBlockMath("\\left( x \\right)"))
+  }
+
   // MARK: - Matching-rule gating
 
   func testBlockDollarDisabledLeavesDollarsAsPlainText() {
@@ -285,7 +324,8 @@ final class LaTexPreProcessorTests: XCTestCase {
     """
     let processed = preprocessor.process(
       input: input,
-      matchingRules: [.inlineSlashBracket, .blockSlashBracket]
+      matchingRules: [.inlineSlashBracket, .blockSlashBracket],
+      customExtension: nil
     )
     XCTAssertEqual(processed, input)
   }
@@ -307,7 +347,8 @@ final class LaTexPreProcessorTests: XCTestCase {
     """
     let processed = preprocessor.process(
       input: input,
-      matchingRules: [.inlineSlashBracket, .blockSlashBracket]
+      matchingRules: [.inlineSlashBracket, .blockSlashBracket],
+      customExtension: nil
     )
     XCTAssertEqual(processed, expected)
   }

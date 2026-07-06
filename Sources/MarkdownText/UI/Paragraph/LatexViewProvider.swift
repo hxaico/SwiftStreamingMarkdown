@@ -88,6 +88,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
   }
 
   override func loadView() {
+    MathRenderDiagnostics.logInlineMathIfInteresting(source: "loadView", latex: latex)
     let label = MTMathUILabel()
     label.latex = latex
     label.textColor = textColor
@@ -102,18 +103,40 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
                                  textContainer: NSTextContainer?,
                                  proposedLineFragment: CGRect,
                                  position: CGPoint) -> CGRect {
-    guard let mathLabel = view as? MTMathUILabel else {
-      return .zero
-    }
-    #if canImport(UIKit)
-    mathLabel.sizeToFit()
-    let size = mathLabel.bounds.size
-    #elseif canImport(AppKit)
-    let size = mathLabel.intrinsicContentSize
-    #endif
-    let height = size.height.rounded(.up) + 1.0
+    // TextKit may call attachmentBounds before loadView. Never rely on self.view here.
+    let size = measuredAttachmentSize(proposedLineFragmentWidth: proposedLineFragment.width)
     let font = attributes[.font] as? MDFont ?? MDFont.systemFont(ofSize: fontSize)
-    let yOffset = (font.xHeight - height) / 2.0
-    return CGRect(x: 0, y: yOffset, width: size.width.rounded(.up), height: height)
+    let yOffset = (font.xHeight - size.height) / 2.0
+    return CGRect(x: 0, y: yOffset, width: size.width, height: size.height)
+  }
+
+  private func measuredAttachmentSize(proposedLineFragmentWidth: CGFloat) -> CGSize {
+    let label: MTMathUILabel
+    if let existingLabel = view as? MTMathUILabel {
+      label = existingLabel
+    } else {
+      label = MTMathUILabel()
+      label.latex = latex
+      label.fontSize = fontSize
+      label.displayErrorInline = false
+    }
+
+    #if canImport(UIKit)
+    let targetWidth = proposedLineFragmentWidth.isFinite && proposedLineFragmentWidth > 0
+      ? proposedLineFragmentWidth
+      : CGFloat.greatestFiniteMagnitude
+    let size = label.sizeThatFits(CGSize(width: targetWidth, height: .greatestFiniteMagnitude))
+    #elseif canImport(AppKit)
+    let size = label.intrinsicContentSize
+    #endif
+
+    guard !size.width.isNaN, !size.height.isNaN, size.width.isFinite, size.height.isFinite,
+          size.width > 0, size.height > 0 else {
+      MathRenderDiagnostics.logInlineMath(source: "attachmentBounds/fallback", latex: latex)
+      return CGSize(width: 1, height: fontSize.rounded(.up))
+    }
+
+    MathRenderDiagnostics.logInlineMathIfInteresting(source: "attachmentBounds", latex: latex)
+    return CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up) + 1.0)
   }
 }

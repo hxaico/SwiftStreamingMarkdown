@@ -35,6 +35,10 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
   /// Vertical spacing between adjacent blocks (paragraphs, headings,
   /// code blocks, lists, etc.). Defaults to 30.
   public let blockSpacing: CGFloat
+  /// Styling applied to code blocks.
+  public let codeBlockStyle: MarkdownCodeBlockStyle
+  /// Optional custom preprocessor.
+  public let preprocessor: MarkdownPreprocessorProtocol?
 
   /// Font and color style for a uniformly-styled run of markdown text.
   public struct MarkdownTextStyle: Hashable, Sendable {
@@ -47,6 +51,27 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     public init(textFonts: TextFonts, textColor: Color) {
       self.textFonts = textFonts
       self.textColor = textColor
+    }
+  }
+
+  /// Styling applied to markdown code blocks, covering typography,
+  /// text colors, background color, and corner radius.
+  public struct MarkdownCodeBlockStyle: Hashable, Sendable {
+    /// Font set used for the code text.
+    public let textFonts: TextFonts
+    /// Foreground color applied to the code text.
+    public let textColor: Color
+    /// Background color behind the code block.
+    public let backgroundColor: Color
+    /// Corner radius of the code block.
+    public let cornerRadius: CGFloat
+
+    /// Create a code block style with typography, text colors, background, and corner radius.
+    public init(textFonts: TextFonts, textColor: Color, backgroundColor: Color, cornerRadius: CGFloat) {
+      self.textFonts = textFonts
+      self.textColor = textColor
+      self.backgroundColor = backgroundColor
+      self.cornerRadius = cornerRadius
     }
   }
 
@@ -230,6 +255,14 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     codeUnderlineColor: Color.Theme.Component.CodeBlock.Foreground.Header
   )
 
+  /// Default styling for `codeBlockStyle`.
+  public static let defaultCodeBlockStyle = MarkdownCodeBlockStyle(
+    textFonts: Typography.codeTextFonts,
+    textColor: Color.Theme.Component.CodeBlock.Foreground.FunctionParameter,
+    backgroundColor: Color.Theme.Component.CodeBlock.Background.Background750,
+    cornerRadius: 20
+  )
+
   /// Create a render config. Every parameter has a sensible default that
   /// matches the bundled `Typography`/`Color.Theme` palette, so callers can
   /// override only the fields they care about.
@@ -243,7 +276,9 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     inlineStyle: MarkdownInlineTextStyle = MarkdownRenderConfig.defaultInlineStyle,
     textContextMenu: TextContextMenu? = nil,
     citationConfig: CitationConfig = .default,
-    blockSpacing: CGFloat = MarkdownRenderConfig.defaultBlockSpacing
+    blockSpacing: CGFloat = MarkdownRenderConfig.defaultBlockSpacing,
+    codeBlockStyle: MarkdownCodeBlockStyle = MarkdownRenderConfig.defaultCodeBlockStyle,
+    preprocessor: MarkdownPreprocessorProtocol? = nil
   ) {
     self.shouldAnimateText = shouldAnimateText
     self.blockQuoteStyle = blockQuoteStyle
@@ -255,9 +290,39 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     self.textContextMenu = textContextMenu
     self.citationConfig = citationConfig
     self.blockSpacing = blockSpacing
+    self.codeBlockStyle = codeBlockStyle
+    self.preprocessor = preprocessor
   }
 
   /// The default render config, equivalent to calling `init()` with no
   /// arguments.
   public static let `default` = MarkdownRenderConfig(shouldAnimateText: false)
+
+  public static func == (lhs: MarkdownRenderConfig, rhs: MarkdownRenderConfig) -> Bool {
+    lhs.shouldAnimateText == rhs.shouldAnimateText &&
+      lhs.blockQuoteStyle == rhs.blockQuoteStyle &&
+      lhs.headingStyle == rhs.headingStyle &&
+      lhs.orderedListStyle == rhs.orderedListStyle &&
+      lhs.paragraphStyle == rhs.paragraphStyle &&
+      lhs.tableStyle == rhs.tableStyle &&
+      lhs.inlineStyle == rhs.inlineStyle &&
+      lhs.textContextMenu == rhs.textContextMenu &&
+      lhs.citationConfig == rhs.citationConfig &&
+      lhs.blockSpacing == rhs.blockSpacing &&
+      lhs.codeBlockStyle == rhs.codeBlockStyle
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(shouldAnimateText)
+    hasher.combine(blockQuoteStyle)
+    hasher.combine(headingStyle)
+    hasher.combine(orderedListStyle)
+    hasher.combine(paragraphStyle)
+    hasher.combine(tableStyle)
+    hasher.combine(inlineStyle)
+    hasher.combine(textContextMenu)
+    hasher.combine(citationConfig)
+    hasher.combine(blockSpacing)
+    hasher.combine(codeBlockStyle)
+  }
 }

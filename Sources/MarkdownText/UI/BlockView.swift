@@ -53,12 +53,15 @@ struct SingleBlockView: View {
           Spacer()
         }
       case .latex(_, let latexString):
-        ScrollView(.horizontal) {
-          HStack(spacing: 0) {
+        if MarkdownLatexSanitizer.shouldRenderBlockMath(latexString) {
+          ScrollView(.horizontal, showsIndicators: false) {
             BlockMathView(latex: latexString, color: config.paragraphStyle.textColor)
-            Spacer()
+              .fixedSize(horizontal: true, vertical: true)
           }
-        }.scrollIndicators(.hidden)
+          .fixedSize(horizontal: false, vertical: true)
+        } else {
+          EmptyView()
+        }
       case .orderedList(_, let items):
         OrderedListView(items: items)
       case .unorderedList(_, let items, let nestedLevel):
