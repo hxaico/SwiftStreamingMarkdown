@@ -12,13 +12,22 @@ public struct MarkdownParseOption {
   /// Specify how to parse latex
   public let latexMatchingRules: [LatexMatching]
 
+  /// Custom preprocessor extension hook
+  public let preprocessor: MarkdownPreprocessorProtocol?
+
   /// Create a new parse option.
   /// - Parameters:
   ///   - speculativeRewrite: See `speculativeRewrite`.
   ///   - latexMatchingRules: See `latexMatchingRules`. Defaults to every supported rule.
-  public init(speculativeRewrite: Bool, latexMatchingRules: [LatexMatching] = LatexMatching.allCases) {
+  ///   - preprocessor: The custom preprocessor to apply. Defaults to nil.
+  public init(
+    speculativeRewrite: Bool,
+    latexMatchingRules: [LatexMatching] = LatexMatching.allCases,
+    preprocessor: MarkdownPreprocessorProtocol? = nil
+  ) {
     self.speculativeRewrite = speculativeRewrite
     self.latexMatchingRules = latexMatchingRules
+    self.preprocessor = preprocessor
   }
 
   /// The set of delimiter forms the LaTeX preprocessor will recognize. Omitting
