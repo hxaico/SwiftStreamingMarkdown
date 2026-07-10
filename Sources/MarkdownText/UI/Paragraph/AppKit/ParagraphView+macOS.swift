@@ -27,7 +27,7 @@ struct ParagraphView: NSViewRepresentable {
     let view = ParagraphNSView()
     view.onUrlTap = openUrlFunction
     view.setParagraphContents(contents, lineSpacing: lineSpacing, animatedByWord: false)
-    view.setTextContextMenu(config.textContextMenu)
+    view.setTextContextMenu(config.resolvedTextContextMenu)
     view.setMarkdownController(markdownController)
 
     if config.shouldAnimateText {
@@ -46,7 +46,7 @@ struct ParagraphView: NSViewRepresentable {
       let shouldAnimate = view.window != nil && config.shouldAnimateText
       view.setParagraphContents(contents, lineSpacing: lineSpacing, animatedByWord: shouldAnimate)
     }
-    view.setTextContextMenu(config.textContextMenu)
+    view.setTextContextMenu(config.resolvedTextContextMenu)
     view.setMarkdownController(markdownController)
   }
 

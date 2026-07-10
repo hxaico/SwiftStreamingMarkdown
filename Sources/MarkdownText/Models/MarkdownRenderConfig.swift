@@ -37,6 +37,11 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
   /// Vertical spacing between adjacent blocks (paragraphs, headings,
   /// code blocks, lists, etc.). Defaults to 30.
   public let blockSpacing: CGFloat
+  /// Configuration for the built-in "Select more text" edit-menu action and the
+  /// modal it presents. Enabled by default.
+  public let textSelectionConfig: TextSelectionConfig
+  /// Color of the horizontal rule rendered for a thematic break (`---`).
+  public let thematicBreakColor: Color
 
   /// Font and color style for a uniformly-styled run of markdown text.
   public struct MarkdownTextStyle: Hashable, Sendable {
@@ -181,7 +186,8 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
 
   /// Default inter-block spacing.
   public static let defaultBlockSpacing: CGFloat = 30
-
+  /// Default color for `thematicBreakColor`.
+  public static let defaultThematicBreakColor: Color = Color.Theme.Stroke.Default.Default300
   /// Default styling for `blockQuoteStyle`.
   public static let defaultBlockQuoteStyle = MarkdownTextStyle(
     textFonts: Typography.baseTextFonts,
@@ -246,7 +252,9 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     textContextMenu: TextContextMenu? = nil,
     citationConfig: CitationConfig = .default,
     codeBlockConfig: CodeBlockConfig = .default,
-    blockSpacing: CGFloat = MarkdownRenderConfig.defaultBlockSpacing
+    blockSpacing: CGFloat = MarkdownRenderConfig.defaultBlockSpacing,
+    textSelectionConfig: TextSelectionConfig = .default,
+    thematicBreakColor: Color = MarkdownRenderConfig.defaultThematicBreakColor
   ) {
     self.shouldAnimateText = shouldAnimateText
     self.blockQuoteStyle = blockQuoteStyle
@@ -259,9 +267,32 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     self.citationConfig = citationConfig
     self.codeBlockConfig = codeBlockConfig
     self.blockSpacing = blockSpacing
+    self.textSelectionConfig = textSelectionConfig
+    self.thematicBreakColor = thematicBreakColor
   }
 
   /// The default render config, equivalent to calling `init()` with no
   /// arguments.
   public static let `default` = MarkdownRenderConfig(shouldAnimateText: false)
+
+  /// The context menu actually rendered on text selection: the consumer-supplied
+  /// `textContextMenu` with the built-in "Select more text" group prepended (so
+  /// it sits right after the system Copy group) when
+  /// `textSelectionConfig.isEnabled` is `true`. Returns the raw `textContextMenu`
+  /// unchanged when text selection is disabled.
+  var resolvedTextContextMenu: TextContextMenu? {
+    guard textSelectionConfig.isEnabled else { return textContextMenu }
+    let selectMoreGroup = TextContextMenuGroup(
+      title: nil,
+      image: nil,
+      displayInline: true,
+      items: [
+        TextContextMenuItem(
+          id: TextSelectionConfig.selectMoreItemID,
+          title: String.selectMoreTextLabel
+        )
+      ]
+    )
+    return TextContextMenu(menuGroups: [selectMoreGroup] + (textContextMenu?.menuGroups ?? []))
+  }
 }

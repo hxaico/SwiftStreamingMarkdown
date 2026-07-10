@@ -130,7 +130,9 @@ enum SampleMarkdownTheme: String, CaseIterable, Identifiable {
         textColor: palette.foreground,
         backgroundColor: palette.softAccent
       ),
-      codeBlockConfig: .init(theme: palette.codeBlockTheme, backgroundColor: palette.codeBlockBackground)
+      codeBlockConfig: .init(theme: palette.codeBlockTheme, backgroundColor: palette.codeBlockBackground),
+      textSelectionConfig: .init(backgroundColor: palette.background),
+      thematicBreakColor: palette.border
     )
   }
 }

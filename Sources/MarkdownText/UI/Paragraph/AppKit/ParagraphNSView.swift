@@ -340,47 +340,65 @@ class ParagraphNSView: NSTextView {
     let clampedRange = NSIntersectionRange(selectedRange, NSRange(location: 0, length: textStorage.length))
     let selectedText = textStorage.attributedSubstring(from: clampedRange).string
 
-    let menu = NSMenu()
+    // Start from the native context menu so system items (Copy, Look Up,
+    // Translate, Share, Services, …) are preserved, then inject the configured
+    // groups at the top, above the system items.
+    let menu = super.menu(for: event) ?? NSMenu()
 
-    // Add standard Copy item
-    let copyItem = NSMenuItem(title: "Copy", action: #selector(copy(_:)), keyEquivalent: "c")
-    menu.addItem(copyItem)
-    menu.addItem(.separator())
-
-    // Add custom groups
+    var injected: [NSMenuItem] = []
+    // The built-in "Select more text" group (when enabled) is prepended by
+    // `MarkdownRenderConfig.resolvedTextContextMenu`, so it renders first.
     for group in textContextMenu.menuGroups {
       if group.displayInline {
         for item in group.items {
-          let menuItem = NSMenuItem(title: item.title, action: #selector(contextMenuItemTapped(_:)), keyEquivalent: "")
-          menuItem.representedObject = ContextMenuAction(id: item.id, selectedText: selectedText)
-          menuItem.target = self
-          menu.addItem(menuItem)
+          injected.append(makeMenuItem(for: item, selectedText: selectedText))
         }
       } else {
         let submenu = NSMenu(title: group.title ?? "")
         for item in group.items {
-          let menuItem = NSMenuItem(title: item.title, action: #selector(contextMenuItemTapped(_:)), keyEquivalent: "")
-          menuItem.representedObject = ContextMenuAction(id: item.id, selectedText: selectedText)
-          menuItem.target = self
-          submenu.addItem(menuItem)
+          submenu.addItem(makeMenuItem(for: item, selectedText: selectedText))
         }
         let submenuItem = NSMenuItem(title: group.title ?? "", action: nil, keyEquivalent: "")
         submenuItem.submenu = submenu
-        menu.addItem(submenuItem)
+        injected.append(submenuItem)
       }
-      menu.addItem(.separator())
+      injected.append(.separator())
     }
 
-    // Notify controller of menu appearance
+    // Insert the block in order at the top; its trailing separator divides it
+    // from the native items (Copy, …) that follow.
+    var insertAt = 0
+    for item in injected {
+      menu.insertItem(item, at: insertAt)
+      insertAt += 1
+    }
+
+    // Notify controller of menu appearance (excluding the built-in item)
     if let markdownController {
       for group in textContextMenu.menuGroups {
-        for item in group.items {
+        for item in group.items where item.id != TextSelectionConfig.selectMoreItemID {
           markdownController.onContextMenuAppear(id: item.id, selectedContent: selectedText)
         }
       }
     }
 
     return menu
+  }
+
+  private func makeMenuItem(for item: TextContextMenuItem, selectedText: String) -> NSMenuItem {
+    if item.id == TextSelectionConfig.selectMoreItemID {
+      let menuItem = NSMenuItem(title: item.title, action: #selector(selectMoreTextTapped), keyEquivalent: "")
+      menuItem.target = self
+      return menuItem
+    }
+    let menuItem = NSMenuItem(title: item.title, action: #selector(contextMenuItemTapped(_:)), keyEquivalent: "")
+    menuItem.representedObject = ContextMenuAction(id: item.id, selectedText: selectedText)
+    menuItem.target = self
+    return menuItem
+  }
+
+  @objc private func selectMoreTextTapped() {
+    markdownController?.requestTextSelection()
   }
 
   @objc private func contextMenuItemTapped(_ sender: NSMenuItem) {
