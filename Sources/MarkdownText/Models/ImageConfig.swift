@@ -14,12 +14,30 @@ public struct ImageConfig: Hashable, Sendable {
 
   /// A category of image source permitted while image rendering is enabled.
   public enum ImageType: Hashable, Sendable {
-    /// Remote images loaded over `http`/`https`, restricted to the hosts in
-    /// `allowedDomains`.
+    /// Remote images loaded over `https`, restricted to the hosts in
+    /// `allowedDomains`. Plain `http` is never permitted.
     ///
     /// An empty list permits any host. Matching is case-insensitive and
     /// includes subdomains, so `example.com` also matches `cdn.example.com`.
+    ///
+    /// Maps from sources with an `https` scheme, e.g.
+    /// `![logo](https://example.com/logo.png)`.
     case remote(allowedDomains: [String])
+
+    /// Bundled images resolved from the app's asset catalog by name via
+    /// `Image(_:)`.
+    ///
+    /// Maps from sources with an `assets` scheme, where the asset name is the
+    /// remainder of the source, e.g. `![logo](assets://Images/logo)` resolves
+    /// the asset named `Images/logo`.
+    case assetCatalog
+
+    /// Bundled images resolved from a loose resource file in the app's main
+    /// bundle by name.
+    ///
+    /// Maps from scheme-less relative paths, e.g. `![logo](logo.png)` or
+    /// `![logo](./logo.png)`.
+    case bundledResource
   }
 
   /// Whether Markdown images are rendered as block-level content.
@@ -42,32 +60,15 @@ public struct ImageConfig: Hashable, Sendable {
   /// Image support disabled.
   public static let disabled = ImageConfig(enabled: false)
 
-  /// Whether an image loaded from `url` may be rendered under this config.
-  ///
-  /// Returns `false` when image support is disabled, the URL is missing, or the
-  /// URL matches none of the `allowedImageTypes`.
-  func allowsImage(from url: URL?) -> Bool {
-    guard enabled, let url else { return false }
-    return allowedImageTypes.contains { $0.allows(url) }
+  /// Whether bundled asset-catalog images are permitted under this config.
+  var allowsAssetCatalog: Bool {
+    guard enabled else { return false }
+    return allowedImageTypes.contains { $0 == .assetCatalog }
   }
-}
 
-extension ImageConfig.ImageType {
-
-  /// Whether `url` satisfies this image type.
-  func allows(_ url: URL) -> Bool {
-    switch self {
-    case .remote(let allowedDomains):
-      guard let scheme = url.scheme?.lowercased(),
-        scheme == "http" || scheme == "https",
-        let host = url.host?.lowercased() else {
-        return false
-      }
-      guard !allowedDomains.isEmpty else { return true }
-      return allowedDomains.contains { domain in
-        let domain = domain.lowercased()
-        return host == domain || host.hasSuffix("." + domain)
-      }
-    }
+  /// Whether loose bundled resource images are permitted under this config.
+  var allowsBundledResource: Bool {
+    guard enabled else { return false }
+    return allowedImageTypes.contains { $0 == .bundledResource }
   }
 }

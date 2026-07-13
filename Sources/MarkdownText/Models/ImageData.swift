@@ -13,27 +13,34 @@ import Markdown
 ///   `MarkdownRenderConfig.imageConfig`.
 struct ImageData: Equatable, Sendable {
 
-  /// The resolved image source URL, or `nil` when the source is missing or
-  /// cannot be parsed.
-  let url: URL?
+  /// A resolved image source that the active `ImageConfig` permits.
+  enum Source: Equatable, Sendable {
+    /// A remote image loaded asynchronously over `https`.
+    case remote(URL)
+    /// A bundled image resolved from the app's asset catalog by name.
+    case assetCatalog(name: String)
+    /// A loose image resource resolved from the app's main bundle by its base
+    /// file name and extension (e.g. `logo.png` → `fileName: "logo"`,
+    /// `ext: "png"`).
+    case bundledResource(fileName: String, ext: String)
+  }
+
+  /// The permitted image source, or `nil` when the source is missing,
+  /// unparseable, or not allowed by the config — in which case the view layer
+  /// renders a placeholder. Precomputed during pre-rendering so the view does
+  /// not evaluate eligibility in its body.
+  let source: Source?
 
   /// The image's alternate text, used as the accessibility label.
   let alt: String
 
-  /// Whether `url` is permitted by the active `ImageConfig`. Precomputed during
-  /// pre-rendering so the view layer does not evaluate eligibility in its body.
-  let isDomainAllowed: Bool
-
-  init(url: URL?, alt: String, isDomainAllowed: Bool) {
-    self.url = url
+  init(source: Source?, alt: String) {
+    self.source = source
     self.alt = alt
-    self.isDomainAllowed = isDomainAllowed
   }
 
   init(image: Markdown.Image, imageConfig: ImageConfig) {
-    let url = image.source.flatMap { URL.fromMixedEncodingString($0) }
-    self.url = url
     self.alt = image.plainText
-    self.isDomainAllowed = imageConfig.allowsImage(from: url)
+    self.source = imageConfig.resolvedSource(for: image.source)
   }
 }
