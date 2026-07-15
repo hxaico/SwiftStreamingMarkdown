@@ -16,10 +16,31 @@ struct BlockImageView: View {
 
   let data: ImageData
 
+  @Environment(\.markdownController) private var controller
+  @Environment(\.markdownConfig) private var config
+
+  @State private var isViewerPresented = false
+
   var body: some View {
     imageContent
       .frame(maxWidth: .infinity, alignment: .center)
       .accessibilityLabel(data.alt.isEmpty ? Text(String.imageLabel) : Text(data.alt))
+      .contentShape(Rectangle())
+      .onTapGesture {
+        handleTap()
+      }
+      .imageViewer(source: data.source, alt: data.alt, isPresented: $isViewerPresented)
+  }
+
+  private func handleTap() {
+    guard data.source != nil else { return }
+    if config.imageConfig.fullscreenViewerEnabled {
+      isViewerPresented = true
+    }
+    Task {
+      guard let image = await data.makeMarkdownImage() else { return }
+      controller?.onImageTap(image: image)
+    }
   }
 
   @ViewBuilder
