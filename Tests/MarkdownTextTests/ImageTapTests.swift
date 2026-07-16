@@ -42,6 +42,19 @@ final class ImageTapTests: XCTestCase {
     XCTAssertNil(payload)
   }
 
+  func test_makeMarkdownImage_resolves_bundled_resource_via_listener() async {
+    let controller = MarkdownController(listener: BundleResourceListener(bundle: .module))
+    let payload = await ImageData(
+      source: ImageData.Source.bundledResource(fileName: "sample-landscape", ext: "png"),
+      alt: "landscape"
+    ).makeMarkdownImage(controller: controller)
+
+    guard case .bundledResource(let bytes)? = payload?.source else {
+      return XCTFail("Expected a bundled-resource payload resolved via the listener")
+    }
+    XCTAssertFalse(bytes.isEmpty)
+  }
+
   func test_controller_forwards_image_tap_to_listener() async {
     let listener = RecordingMarkdownListener()
     let controller = MarkdownController(listener: listener)
@@ -82,5 +95,27 @@ private actor RecordingMarkdownListener: MarkdownListener {
     } else {
       tappedImage = image
     }
+  }
+}
+
+/// Minimal `MarkdownListener` that resolves bundled resources from a specific
+/// bundle, standing in for a dependency package or framework bundle.
+private final class BundleResourceListener: MarkdownListener {
+
+  let bundle: Bundle
+
+  init(bundle: Bundle) {
+    self.bundle = bundle
+  }
+
+  func onRender(markdown: RenderableDocument) async {}
+  func onTableCopyTap(content: String) async {}
+  func onTableDownloadTap(content: String) async {}
+  func onContextMenuAppear(id: String, selectedContent: String) async {}
+  func onContextMenuTap(id: String, selectedContent: String) async {}
+  func onImageTap(image: MarkdownImage) async {}
+
+  func resolveBundledResource(fileName: String, ext: String?) -> URL? {
+    bundle.url(forResource: fileName, withExtension: ext)
   }
 }
