@@ -15,19 +15,34 @@ public struct MarkdownParseOption {
   /// Custom preprocessor extension hook
   public let preprocessor: MarkdownPreprocessorProtocol?
 
+  /// Whether to enable experimental block-level handling of Markdown images.
+  ///
+  /// When enabled, the parser rewrites paragraphs that contain images so each
+  /// image is isolated into its own block-level paragraph.
+  ///
+  /// - Important: Image support is **experimental** and incomplete. There is no
+  ///   image renderer yet, so an isolated image paragraph currently renders as
+  ///   empty; enabling this only changes the parsed document structure. The
+  ///   behavior, API, and rendering output may change in future releases.
+  ///   Defaults to `false`.
+  public let imageSupport: Bool
+
   /// Create a new parse option.
   /// - Parameters:
   ///   - speculativeRewrite: See `speculativeRewrite`.
   ///   - latexMatchingRules: See `latexMatchingRules`. Defaults to every supported rule.
   ///   - preprocessor: The custom preprocessor to apply. Defaults to nil.
+  ///   - imageSupport: See `imageSupport`. Experimental; defaults to `false`.
   public init(
     speculativeRewrite: Bool,
     latexMatchingRules: [LatexMatching] = LatexMatching.allCases,
-    preprocessor: MarkdownPreprocessorProtocol? = nil
+    preprocessor: MarkdownPreprocessorProtocol? = nil,
+    imageSupport: Bool = false
   ) {
     self.speculativeRewrite = speculativeRewrite
     self.latexMatchingRules = latexMatchingRules
     self.preprocessor = preprocessor
+    self.imageSupport = imageSupport
   }
 
   /// The set of delimiter forms the LaTeX preprocessor will recognize. Omitting

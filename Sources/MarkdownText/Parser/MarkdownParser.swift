@@ -34,7 +34,8 @@ extension MarkdownParser {
   public func parse(text: String, config: MarkdownRenderConfig) async -> RenderableDocument {
     let option = MarkdownParseOption(
       speculativeRewrite: false,
-      preprocessor: config.preprocessor
+      preprocessor: config.preprocessor,
+      imageSupport: config.imageConfig.enabled
     )
     let document = await parse(text: text, option: option).document
     return await RenderableDocument(document: document, config: config)

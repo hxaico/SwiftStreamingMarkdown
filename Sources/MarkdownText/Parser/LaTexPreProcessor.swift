@@ -24,8 +24,6 @@ public extension MarkdownPreprocessorProtocol {
   func sanitizeMath(_ latex: String, isBlock: Bool) -> String { latex }
 }
 
-
-
 /// Pre-process the inline and block latex in markdown.
 /// This is a less heavy-weight approach than forking commonmark-gfm and swift-markdown to support parsing latex nodes.
 protocol LaTexPreProcessor {
@@ -190,7 +188,7 @@ final class LaTexPreProcessorImpl: LaTexPreProcessor {
       result.replace(Self.dollarBlockMath, with: { match in
         let indentation = match[Self.latexOpenIndentation]
         let latex = match[Self.latexRef]
-        let sanitized = customExtension?.sanitizeMath(String(latex), isBlock: true) ?? String(latex)
+        let sanitized = customExtension?.sanitizeMath(String(latex), isBlock: true) ?? String(latex).filteringUnsupportedSyntaxes()
         return Self.buildCodeBlock(indentation: indentation, latex: sanitized)
       })
     }
@@ -199,7 +197,7 @@ final class LaTexPreProcessorImpl: LaTexPreProcessor {
       result.replace(Self.slashBracketMath, with: { match in
         let indentation = match[Self.latexOpenIndentation]
         let latex = match[Self.latexRef]
-        let sanitized = customExtension?.sanitizeMath(String(latex), isBlock: true) ?? String(latex)
+        let sanitized = customExtension?.sanitizeMath(String(latex), isBlock: true) ?? String(latex).filteringUnsupportedSyntaxes()
         return Self.buildCodeBlock(indentation: indentation, latex: sanitized)
       })
     }
@@ -215,7 +213,7 @@ final class LaTexPreProcessorImpl: LaTexPreProcessor {
     guard rules.contains(.inlineSlashBracket) else { return input }
     return input.replacing(Self.inlineParenthesisMath, with: { match in
       let latex = String(match[Self.latexRef])
-      let sanitized = customExtension?.sanitizeMath(latex, isBlock: false) ?? latex
+      let sanitized = customExtension?.sanitizeMath(latex, isBlock: false) ?? latex.filteringUnsupportedSyntaxes()
       return "`\\(\(sanitized)\\)`"
     })
   }
@@ -285,8 +283,8 @@ final class LaTexPreProcessorImpl: LaTexPreProcessor {
 
   private func parseFence(line: String) -> (char: Character, length: Int)? {
     let trimmed = line.trimmingCharacters(in: .whitespaces)
-    guard trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") else { return nil }
-    let char = trimmed.first!
+    guard trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~"),
+          let char = trimmed.first else { return nil }
     let length = trimmed.prefix(while: { $0 == char }).count
     return (char, length)
   }
@@ -367,3 +365,138 @@ public enum MarkdownLatexSanitizer {
   }
 }
 
+fileprivate extension String {
+  /// Pipeline of unsupported syntax replacements applied to LaTeX strings.
+  func filteringUnsupportedSyntaxes() -> String {
+    return strippingBoxedLatex()
+      .replacingNotEquiv()
+      .replacingPmod()
+      .replacingTextCommand()
+      .replacingfrac()
+      .replacingFracShorthand()
+      .replacingPrime()
+      .replacingVector()
+      .replacingImplies()
+      .replacingHarpoons()
+      .replacingDots()
+      .strippingBracketSizeCommands()
+  }
+
+  /// Unwraps `\boxed{...}` to its inner content. iosMath does not support `\boxed`.
+  func strippingBoxedLatex() -> String {
+    var result = self
+    let token = "\\boxed{"
+
+    while let boxStart = result.range(of: token) {
+      let contentStart = boxStart.upperBound
+      guard let closingBrace = Self.matchingClosingBrace(in: result, openingBraceAt: boxStart.upperBound) else {
+        result.replaceSubrange(boxStart, with: "")
+        continue
+      }
+      let inner = String(result[contentStart ..< closingBrace])
+      result.replaceSubrange(boxStart.lowerBound ... closingBrace, with: inner)
+    }
+
+    return result.replacingOccurrences(of: "\\boxed", with: "")
+  }
+
+  /// iosMath does not support `\not\equiv`; map to `\neq`.
+  func replacingNotEquiv() -> String {
+    return replacingOccurrences(of: "\\not\\equiv", with: "\\neq")
+  }
+
+  /// iosMath does not support amsmath `\pmod`; map to `\ (\mathrm{mod}\ ...)`.
+  func replacingPmod() -> String {
+    var result = self
+    let token = "\\pmod{"
+
+    while let pmodStart = result.range(of: token) {
+      let contentStart = pmodStart.upperBound
+      guard let closingBrace = Self.matchingClosingBrace(in: result, openingBraceAt: pmodStart.upperBound) else {
+        result.replaceSubrange(pmodStart, with: "")
+        continue
+      }
+      let argument = String(result[contentStart ..< closingBrace])
+      result.replaceSubrange(pmodStart.lowerBound ... closingBrace, with: "(\\mathrm{mod}\\ \(argument))")
+    }
+
+    return result
+  }
+
+  private static func matchingClosingBrace(in text: String, openingBraceAt contentStart: String.Index) -> String.Index? {
+    guard contentStart > text.startIndex else { return nil }
+    let openingBrace = text.index(before: contentStart)
+    guard text[openingBrace] == "{" else { return nil }
+
+    var depth = 1
+    var index = contentStart
+    while index < text.endIndex {
+      switch text[index] {
+      case "{":
+        depth += 1
+      case "}":
+        depth -= 1
+        if depth == 0 {
+          return index
+        }
+      default:
+        break
+      }
+      index = text.index(after: index)
+    }
+    return nil
+  }
+
+  /// iosMath does not support amsmath `\text`; map to `\mathrm` which renders roman text in math mode.
+  func replacingTextCommand() -> String {
+    return replacingOccurrences(of: "\\text", with: "\\mathrm")
+  }
+
+  /// Replacing `dfrac` and `tfrac` which are unsupported into simple `frac`
+  func replacingfrac() -> String {
+    return replacingOccurrences(of: "\\dfrac", with: "\\frac")
+      .replacingOccurrences(of: "\\tfrac", with: "\\frac")
+  }
+
+  /// iosMath requires braced `\frac` arguments; normalize common TeX shorthands.
+  func replacingFracShorthand() -> String {
+    guard let regex = try? NSRegularExpression(pattern: #"\\frac(\d|\\+[a-zA-Z]+)(\d|\\+[a-zA-Z]+)"#) else { return self }
+    let range = NSRange(startIndex..., in: self)
+    return regex.stringByReplacingMatches(in: self, range: range, withTemplate: "\\\\frac{$1}{$2}")
+  }
+
+  /// Replacing `'` which is unsupported into `^prime`
+  func replacingPrime() -> String {
+    return replacingOccurrences(of: "'", with: "^\\prime")
+  }
+
+  /// Replacing `overrightarrow` which is unsupported into `vec`
+  func replacingVector() -> String {
+    return replacingOccurrences(of: "\\overrightarrow", with: "\\vec")
+  }
+
+  /// Replacing `implies` which is unsupported into `Rightarrow`
+  func replacingImplies() -> String {
+    return replacingOccurrences(of: "\\implies", with: "\\Rightarrow")
+  }
+
+  /// Replacing `harpoons` which is unsupported into `Leftrightarrow`
+  func replacingHarpoons() -> String {
+    return replacingOccurrences(of: "\\rightleftharpoons", with: "\\Leftrightarrow")
+  }
+
+  /// Replacing `dots` which is unsupported into `ldots`
+  func replacingDots() -> String {
+    return replacingOccurrences(of: "\\dots", with: "\\ldots")
+  }
+
+  /// Stripping commands to specify bracket sizes(`\Biggl` etc) which is unsupported
+  func strippingBracketSizeCommands() -> String {
+    var result = self
+    let commands = ["\\bigl", "\\biggl", "\\Bigl", "\\Biggl", "\\bigr", "\\biggr", "\\Bigr", "\\Biggr", "\\big"]
+    for command in commands {
+      result = result.replacingOccurrences(of: command, with: "")
+    }
+    return result
+  }
+}

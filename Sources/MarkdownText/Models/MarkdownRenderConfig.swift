@@ -32,13 +32,29 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
   public let textContextMenu: TextContextMenu?
   /// Configuration that controls inline citation parsing and rendering.
   public let citationConfig: CitationConfig
+  /// Configuration that controls code-block syntax-highlighting styling.
+  public let codeBlockConfig: CodeBlockConfig
   /// Vertical spacing between adjacent blocks (paragraphs, headings,
   /// code blocks, lists, etc.). Defaults to 30.
   public let blockSpacing: CGFloat
-  /// Styling applied to code blocks.
-  public let codeBlockStyle: MarkdownCodeBlockStyle
   /// Optional custom preprocessor.
   public let preprocessor: MarkdownPreprocessorProtocol?
+  /// Configuration for the built-in "Select more text" edit-menu action and the
+  /// modal it presents. Enabled by default.
+  public let textSelectionConfig: TextSelectionConfig
+  /// Color of the horizontal rule rendered for a thematic break (`---`).
+  public let thematicBreakColor: Color
+
+  /// Configuration controlling whether and how Markdown images are rendered as
+  /// block-level content.
+  ///
+  /// When enabled, image-only paragraphs are rendered as block images (loaded
+  /// asynchronously). Pair with `MarkdownParseOption.imageSupport` so that
+  /// images embedded alongside text are split out into their own blocks.
+  ///
+  /// - Important: Image support is **experimental**. The behavior, API, and
+  ///   rendering output may change in future releases. Defaults to `.disabled`.
+  public let imageConfig: ImageConfig
 
   /// Font and color style for a uniformly-styled run of markdown text.
   public struct MarkdownTextStyle: Hashable, Sendable {
@@ -51,27 +67,6 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     public init(textFonts: TextFonts, textColor: Color) {
       self.textFonts = textFonts
       self.textColor = textColor
-    }
-  }
-
-  /// Styling applied to markdown code blocks, covering typography,
-  /// text colors, background color, and corner radius.
-  public struct MarkdownCodeBlockStyle: Hashable, Sendable {
-    /// Font set used for the code text.
-    public let textFonts: TextFonts
-    /// Foreground color applied to the code text.
-    public let textColor: Color
-    /// Background color behind the code block.
-    public let backgroundColor: Color
-    /// Corner radius of the code block.
-    public let cornerRadius: CGFloat
-
-    /// Create a code block style with typography, text colors, background, and corner radius.
-    public init(textFonts: TextFonts, textColor: Color, backgroundColor: Color, cornerRadius: CGFloat) {
-      self.textFonts = textFonts
-      self.textColor = textColor
-      self.backgroundColor = backgroundColor
-      self.cornerRadius = cornerRadius
     }
   }
 
@@ -204,7 +199,8 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
 
   /// Default inter-block spacing.
   public static let defaultBlockSpacing: CGFloat = 30
-
+  /// Default color for `thematicBreakColor`.
+  public static let defaultThematicBreakColor: Color = Color.Theme.Stroke.Default.Default300
   /// Default styling for `blockQuoteStyle`.
   public static let defaultBlockQuoteStyle = MarkdownTextStyle(
     textFonts: Typography.baseTextFonts,
@@ -255,14 +251,6 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     codeUnderlineColor: Color.Theme.Component.CodeBlock.Foreground.Header
   )
 
-  /// Default styling for `codeBlockStyle`.
-  public static let defaultCodeBlockStyle = MarkdownCodeBlockStyle(
-    textFonts: Typography.codeTextFonts,
-    textColor: Color.Theme.Component.CodeBlock.Foreground.FunctionParameter,
-    backgroundColor: Color.Theme.Component.CodeBlock.Background.Background750,
-    cornerRadius: 20
-  )
-
   /// Create a render config. Every parameter has a sensible default that
   /// matches the bundled `Typography`/`Color.Theme` palette, so callers can
   /// override only the fields they care about.
@@ -276,8 +264,11 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     inlineStyle: MarkdownInlineTextStyle = MarkdownRenderConfig.defaultInlineStyle,
     textContextMenu: TextContextMenu? = nil,
     citationConfig: CitationConfig = .default,
+    codeBlockConfig: CodeBlockConfig = .default,
     blockSpacing: CGFloat = MarkdownRenderConfig.defaultBlockSpacing,
-    codeBlockStyle: MarkdownCodeBlockStyle = MarkdownRenderConfig.defaultCodeBlockStyle,
+    textSelectionConfig: TextSelectionConfig = .default,
+    thematicBreakColor: Color = MarkdownRenderConfig.defaultThematicBreakColor,
+    imageConfig: ImageConfig = .disabled,
     preprocessor: MarkdownPreprocessorProtocol? = nil
   ) {
     self.shouldAnimateText = shouldAnimateText
@@ -289,8 +280,11 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     self.inlineStyle = inlineStyle
     self.textContextMenu = textContextMenu
     self.citationConfig = citationConfig
+    self.codeBlockConfig = codeBlockConfig
     self.blockSpacing = blockSpacing
-    self.codeBlockStyle = codeBlockStyle
+    self.textSelectionConfig = textSelectionConfig
+    self.thematicBreakColor = thematicBreakColor
+    self.imageConfig = imageConfig
     self.preprocessor = preprocessor
   }
 
@@ -308,8 +302,11 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
       lhs.inlineStyle == rhs.inlineStyle &&
       lhs.textContextMenu == rhs.textContextMenu &&
       lhs.citationConfig == rhs.citationConfig &&
+      lhs.codeBlockConfig == rhs.codeBlockConfig &&
       lhs.blockSpacing == rhs.blockSpacing &&
-      lhs.codeBlockStyle == rhs.codeBlockStyle &&
+      lhs.textSelectionConfig == rhs.textSelectionConfig &&
+      lhs.thematicBreakColor == rhs.thematicBreakColor &&
+      lhs.imageConfig == rhs.imageConfig &&
       type(of: lhs.preprocessor) == type(of: rhs.preprocessor)
   }
 
@@ -323,12 +320,36 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     hasher.combine(inlineStyle)
     hasher.combine(textContextMenu)
     hasher.combine(citationConfig)
+    hasher.combine(codeBlockConfig)
     hasher.combine(blockSpacing)
-    hasher.combine(codeBlockStyle)
+    hasher.combine(textSelectionConfig)
+    hasher.combine(thematicBreakColor)
+    hasher.combine(imageConfig)
     if let preprocessor = preprocessor {
       hasher.combine(ObjectIdentifier(type(of: preprocessor)))
     } else {
       hasher.combine(0)
     }
+  }
+
+  /// The context menu actually rendered on text selection: the consumer-supplied
+  /// `textContextMenu` with the built-in "Select more text" group prepended (so
+  /// it sits right after the system Copy group) when
+  /// `textSelectionConfig.isEnabled` is `true`. Returns the raw `textContextMenu`
+  /// unchanged when text selection is disabled.
+  var resolvedTextContextMenu: TextContextMenu? {
+    guard textSelectionConfig.isEnabled else { return textContextMenu }
+    let selectMoreGroup = TextContextMenuGroup(
+      title: nil,
+      image: nil,
+      displayInline: true,
+      items: [
+        TextContextMenuItem(
+          id: TextSelectionConfig.selectMoreItemID,
+          title: String.selectMoreTextLabel
+        )
+      ]
+    )
+    return TextContextMenu(menuGroups: [selectMoreGroup] + (textContextMenu?.menuGroups ?? []))
   }
 }
