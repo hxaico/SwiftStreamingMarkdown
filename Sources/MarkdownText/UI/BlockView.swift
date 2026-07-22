@@ -55,8 +55,12 @@ struct SingleBlockView: View {
       case .latex(_, let latexString):
         if MarkdownLatexSanitizer.shouldRenderBlockMath(latexString) {
           ScrollView(.horizontal, showsIndicators: false) {
-            BlockMathView(latex: latexString, color: config.paragraphStyle.textColor)
-              .fixedSize(horizontal: true, vertical: true)
+            BlockMathView(
+              latex: latexString,
+              color: config.mathStyle.textColor,
+              pointSize: config.mathStyle.fontSize
+            )
+            .fixedSize(horizontal: true, vertical: true)
           }
           .fixedSize(horizontal: false, vertical: true)
         }

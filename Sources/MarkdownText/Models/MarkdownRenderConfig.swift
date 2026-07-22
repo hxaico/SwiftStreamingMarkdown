@@ -56,6 +56,23 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
   ///   rendering output may change in future releases. Defaults to `.disabled`.
   public let imageConfig: ImageConfig
 
+  /// Styling applied to LaTeX math equations.
+  public let mathStyle: MarkdownMathStyle
+
+  /// Styling applied to LaTeX math equations.
+  public struct MarkdownMathStyle: Hashable, Sendable {
+    /// Font size in points for LaTeX math rendering.
+    public let fontSize: CGFloat
+    /// Foreground color applied to LaTeX math equations.
+    public let textColor: Color
+
+    /// Create a math style with the supplied font size and text color.
+    public init(fontSize: CGFloat, textColor: Color) {
+      self.fontSize = fontSize
+      self.textColor = textColor
+    }
+  }
+
   /// Font and color style for a uniformly-styled run of markdown text.
   public struct MarkdownTextStyle: Hashable, Sendable {
     /// Font set used for normal, bold, and italic variants.
@@ -251,6 +268,12 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     codeUnderlineColor: Color.Theme.Component.CodeBlock.Foreground.Header
   )
 
+  /// Default styling for `mathStyle`.
+  public static let defaultMathStyle = MarkdownMathStyle(
+    fontSize: 19,
+    textColor: Color.Theme.Foreground.Primary.Primary750
+  )
+
   /// Create a render config. Every parameter has a sensible default that
   /// matches the bundled `Typography`/`Color.Theme` palette, so callers can
   /// override only the fields they care about.
@@ -269,6 +292,7 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     textSelectionConfig: TextSelectionConfig = .default,
     thematicBreakColor: Color = MarkdownRenderConfig.defaultThematicBreakColor,
     imageConfig: ImageConfig = .disabled,
+    mathStyle: MarkdownMathStyle = MarkdownRenderConfig.defaultMathStyle,
     preprocessor: MarkdownPreprocessorProtocol? = nil
   ) {
     self.shouldAnimateText = shouldAnimateText
@@ -285,6 +309,7 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     self.textSelectionConfig = textSelectionConfig
     self.thematicBreakColor = thematicBreakColor
     self.imageConfig = imageConfig
+    self.mathStyle = mathStyle
     self.preprocessor = preprocessor
   }
 
@@ -307,6 +332,7 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
       lhs.textSelectionConfig == rhs.textSelectionConfig &&
       lhs.thematicBreakColor == rhs.thematicBreakColor &&
       lhs.imageConfig == rhs.imageConfig &&
+      lhs.mathStyle == rhs.mathStyle &&
       type(of: lhs.preprocessor) == type(of: rhs.preprocessor)
   }
 
@@ -325,6 +351,7 @@ public struct MarkdownRenderConfig: Hashable, Sendable {
     hasher.combine(textSelectionConfig)
     hasher.combine(thematicBreakColor)
     hasher.combine(imageConfig)
+    hasher.combine(mathStyle)
     if let preprocessor = preprocessor {
       hasher.combine(ObjectIdentifier(type(of: preprocessor)))
     } else {
