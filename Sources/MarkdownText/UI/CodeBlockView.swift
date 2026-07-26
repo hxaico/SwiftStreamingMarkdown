@@ -88,43 +88,43 @@ struct CodeBlockView: View {
         size: size
       )
     }
-    .padding(16)
+//    .padding(16)
   }
 
   var body: some View {
     VStack(spacing: 0) {
-      HStack(alignment: .top) {
-        Text(language)
-          .font(Typography.smallTextFonts)
-          .foregroundStyle(foregroundColor)
-        Spacer()
-        HStack(alignment: .firstTextBaseline, spacing: 6.0) {
-          Image("copyIcon14", bundle: .module)
-            .renderingMode(.template)
-            .foregroundStyle(foregroundColor)
-          Text(copied ? String.codeCopiedLabel : String.codeCopyLabel)
-            .accessibilityAddTraits(.isButton)
-            .font(Typography.smallTextFonts)
-            .foregroundStyle(foregroundColor)
-            .onTapGesture {
-              copied = true
-              #if canImport(UIKit)
-              UIPasteboard.general.string = code
-              #elseif canImport(AppKit)
-              NSPasteboard.general.clearContents()
-              NSPasteboard.general.setString(code, forType: .string)
-              #endif
-              if let onCodeCopied {
-                onCodeCopied()
-              }
-            }
-        }
-      }.frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .if(backgroundColor != nil, content: { view in
-          view.codeBlockBackground(color: backgroundColor ?? .clear, radius: cornerRadius, topRounded: true, bottomRounded: false)
-        })
+//      HStack(alignment: .top) {
+//        Text(language)
+//          .font(Typography.smallTextFonts)
+//          .foregroundStyle(foregroundColor)
+//        Spacer()
+//        HStack(alignment: .firstTextBaseline, spacing: 6.0) {
+//          Image("copyIcon14", bundle: .module)
+//            .renderingMode(.template)
+//            .foregroundStyle(foregroundColor)
+//          Text(copied ? String.codeCopiedLabel : String.codeCopyLabel)
+//            .accessibilityAddTraits(.isButton)
+//            .font(Typography.smallTextFonts)
+//            .foregroundStyle(foregroundColor)
+//            .onTapGesture {
+//              copied = true
+//              #if canImport(UIKit)
+//              UIPasteboard.general.string = code
+//              #elseif canImport(AppKit)
+//              NSPasteboard.general.clearContents()
+//              NSPasteboard.general.setString(code, forType: .string)
+//              #endif
+//              if let onCodeCopied {
+//                onCodeCopied()
+//              }
+//            }
+//        }
+//      }.frame(maxWidth: .infinity)
+//        .padding(.horizontal, 16)
+//        .padding(.vertical, 12)
+//        .if(backgroundColor != nil, content: { view in
+//          view.codeBlockBackground(color: backgroundColor ?? .clear, radius: cornerRadius, topRounded: true, bottomRounded: false)
+//        })
       codeblock
         .scrollIndicators(.automatic)
         .if(backgroundColor != nil, content: { view in
