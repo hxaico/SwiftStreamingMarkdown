@@ -126,7 +126,7 @@ struct CodeBlockView: View {
 //          view.codeBlockBackground(color: backgroundColor ?? .clear, radius: cornerRadius, topRounded: true, bottomRounded: false)
 //        })
       codeblock
-        .scrollIndicators(.automatic)
+        .scrollIndicators(.hidden)
         .if(backgroundColor != nil, content: { view in
           view.codeBlockBackground(color: backgroundColor ?? .clear, radius: cornerRadius, topRounded: false, bottomRounded: true)
         })
