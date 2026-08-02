@@ -52,7 +52,7 @@ struct BlockMathView: UIViewRepresentable, Equatable {
     }
 
     do {
-      try MathExceptionCatcher.tryBlock {
+      try MathExceptionCatcher.try {
         label.isHidden = false
         label.latex = latex
       }
@@ -81,7 +81,7 @@ struct BlockMathView: UIViewRepresentable, Equatable {
 
   private func measuredSize(for label: MTMathUILabel) -> CGSize? {
     do {
-      try MathExceptionCatcher.tryBlock {
+      try MathExceptionCatcher.try {
         label.sizeToFit()
       }
     } catch {
@@ -139,7 +139,7 @@ struct BlockMathView: NSViewRepresentable, Equatable {
     applyLatex(to: nsView)
     var size: CGSize = .zero
     do {
-      try MathExceptionCatcher.tryBlock {
+      try MathExceptionCatcher.try {
         size = nsView.intrinsicContentSize
       }
     } catch {
@@ -157,7 +157,7 @@ struct BlockMathView: NSViewRepresentable, Equatable {
       label.latex = ""
       return
     }
-    try? MathExceptionCatcher.tryBlock {
+    try? MathExceptionCatcher.try {
       label.latex = latex
     }
   }

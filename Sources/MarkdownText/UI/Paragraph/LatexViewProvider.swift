@@ -91,7 +91,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
   override func loadView() {
     MathRenderDiagnostics.logInlineMathIfInteresting(source: "loadView", latex: latex)
     let label = MTMathUILabel()
-    try? MathExceptionCatcher.tryBlock {
+    try? MathExceptionCatcher.try {
       label.latex = self.latex
     }
     label.textColor = textColor
@@ -119,7 +119,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
       label = existingLabel
     } else {
       label = MTMathUILabel()
-      try? MathExceptionCatcher.tryBlock {
+      try? MathExceptionCatcher.try {
         label.latex = self.latex
       }
       label.fontSize = fontSize
@@ -128,7 +128,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
 
     var size: CGSize = .zero
     do {
-      try MathExceptionCatcher.tryBlock {
+      try MathExceptionCatcher.try {
         #if canImport(UIKit)
         let targetWidth = proposedLineFragmentWidth.isFinite && proposedLineFragmentWidth > 0
           ? proposedLineFragmentWidth
