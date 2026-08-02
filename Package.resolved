@@ -20,9 +20,10 @@
     {
       "identity" : "iosmath",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/junyan72/iosMath",
+      "location" : "https://github.com/kostub/iosMath",
       "state" : {
-        "revision" : "ba9ab7729b151329c54fd895a7c1859981d9484c"
+        "revision" : "838cddc01fdd67efd530f8bb67959ad2715f9b06",
+        "version" : "2.5.0"
       }
     },
     {
