@@ -51,13 +51,12 @@ struct BlockMathView: UIViewRepresentable, Equatable {
       return nil
     }
 
-    var caughtError: NSError?
-    let succeeded = MathExceptionCatcher.tryBlock({
-      label.isHidden = false
-      label.latex = latex
-    }, error: &caughtError)
-
-    if !succeeded {
+    do {
+      try MathExceptionCatcher.tryBlock {
+        label.isHidden = false
+        label.latex = latex
+      }
+    } catch {
       MathRenderDiagnostics.logBlockMath(
         source: "applyLatex/objcException",
         latex: latex
@@ -81,12 +80,11 @@ struct BlockMathView: UIViewRepresentable, Equatable {
   }
 
   private func measuredSize(for label: MTMathUILabel) -> CGSize? {
-    var caughtError: NSError?
-    let succeeded = MathExceptionCatcher.tryBlock({
-      label.sizeToFit()
-    }, error: &caughtError)
-
-    if !succeeded {
+    do {
+      try MathExceptionCatcher.tryBlock {
+        label.sizeToFit()
+      }
+    } catch {
       MathRenderDiagnostics.logBlockMath(
         source: "measuredSize/objcException",
         latex: latex
@@ -140,11 +138,14 @@ struct BlockMathView: NSViewRepresentable, Equatable {
     }
     applyLatex(to: nsView)
     var size: CGSize = .zero
-    var caughtError: NSError?
-    let succeeded = MathExceptionCatcher.tryBlock({
-      size = nsView.intrinsicContentSize
-    }, error: &caughtError)
-    guard succeeded, size.width.isFinite, size.height.isFinite,
+    do {
+      try MathExceptionCatcher.tryBlock {
+        size = nsView.intrinsicContentSize
+      }
+    } catch {
+      return nil
+    }
+    guard size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
       return nil
     }
@@ -156,10 +157,9 @@ struct BlockMathView: NSViewRepresentable, Equatable {
       label.latex = ""
       return
     }
-    var caughtError: NSError?
-    let _ = MathExceptionCatcher.tryBlock({
+    try? MathExceptionCatcher.tryBlock {
       label.latex = latex
-    }, error: &caughtError)
+    }
   }
 }
 
