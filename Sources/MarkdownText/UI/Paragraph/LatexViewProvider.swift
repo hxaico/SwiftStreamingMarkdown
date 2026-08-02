@@ -91,10 +91,9 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
   override func loadView() {
     MathRenderDiagnostics.logInlineMathIfInteresting(source: "loadView", latex: latex)
     let label = MTMathUILabel()
-    var caughtError: NSError?
-    let _ = MathExceptionCatcher.tryBlock({
+    try? MathExceptionCatcher.tryBlock {
       label.latex = self.latex
-    }, error: &caughtError)
+    }
     label.textColor = textColor
     label.displayErrorInline = false
     label.fontSize = fontSize
@@ -120,28 +119,31 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
       label = existingLabel
     } else {
       label = MTMathUILabel()
-      var caughtError: NSError?
-      let _ = MathExceptionCatcher.tryBlock({
+      try? MathExceptionCatcher.tryBlock {
         label.latex = self.latex
-      }, error: &caughtError)
+      }
       label.fontSize = fontSize
       label.displayErrorInline = false
     }
 
     var size: CGSize = .zero
-    var caughtError: NSError?
-    let succeeded = MathExceptionCatcher.tryBlock({
-      #if canImport(UIKit)
-      let targetWidth = proposedLineFragmentWidth.isFinite && proposedLineFragmentWidth > 0
-        ? proposedLineFragmentWidth
-        : CGFloat.greatestFiniteMagnitude
-      size = label.sizeThatFits(CGSize(width: targetWidth, height: .greatestFiniteMagnitude))
-      #elseif canImport(AppKit)
-      size = label.intrinsicContentSize
-      #endif
-    }, error: &caughtError)
+    do {
+      try MathExceptionCatcher.tryBlock {
+        #if canImport(UIKit)
+        let targetWidth = proposedLineFragmentWidth.isFinite && proposedLineFragmentWidth > 0
+          ? proposedLineFragmentWidth
+          : CGFloat.greatestFiniteMagnitude
+        size = label.sizeThatFits(CGSize(width: targetWidth, height: .greatestFiniteMagnitude))
+        #elseif canImport(AppKit)
+        size = label.intrinsicContentSize
+        #endif
+      }
+    } catch {
+      MathRenderDiagnostics.logInlineMath(source: "attachmentBounds/fallback", latex: latex)
+      return CGSize(width: 1, height: fontSize.rounded(.up))
+    }
 
-    guard succeeded, size.width.isFinite, size.height.isFinite,
+    guard size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
       MathRenderDiagnostics.logInlineMath(source: "attachmentBounds/fallback", latex: latex)
       return CGSize(width: 1, height: fontSize.rounded(.up))
