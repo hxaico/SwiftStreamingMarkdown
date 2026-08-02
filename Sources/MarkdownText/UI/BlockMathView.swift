@@ -5,10 +5,11 @@
 
 import SwiftUI
 import iosMath
+import MathExceptionCatcher
 
 #if canImport(UIKit)
 
-struct BlockMathView: UIViewRepresentable {
+struct BlockMathView: UIViewRepresentable, Equatable {
   let latex: String
   let color: Color
   let pointSize: CGFloat
@@ -50,14 +51,25 @@ struct BlockMathView: UIViewRepresentable {
       return nil
     }
 
-    label.isHidden = false
-    label.latex = latex
+    var caughtError: NSError?
+    let succeeded = MathExceptionCatcher.tryBlock({
+      label.isHidden = false
+      label.latex = latex
+    }, error: &caughtError)
+
+    if !succeeded {
+      MathRenderDiagnostics.logBlockMath(
+        source: "applyLatex/objcException",
+        latex: latex
+      )
+      clearLabel(label)
+      return nil
+    }
+
     guard let size = measuredSize(for: label) else {
       clearLabel(label)
       return nil
     }
-    label.bounds = CGRect(origin: .zero, size: size)
-    label.frame = label.bounds
     return size
   }
 
@@ -69,7 +81,19 @@ struct BlockMathView: UIViewRepresentable {
   }
 
   private func measuredSize(for label: MTMathUILabel) -> CGSize? {
-    label.sizeToFit()
+    var caughtError: NSError?
+    let succeeded = MathExceptionCatcher.tryBlock({
+      label.sizeToFit()
+    }, error: &caughtError)
+
+    if !succeeded {
+      MathRenderDiagnostics.logBlockMath(
+        source: "measuredSize/objcException",
+        latex: latex
+      )
+      return nil
+    }
+
     let rawSize = label.bounds.size
     guard rawSize.width.isFinite, rawSize.height.isFinite,
           rawSize.width > 0, rawSize.height > 0 else {
@@ -82,7 +106,7 @@ struct BlockMathView: UIViewRepresentable {
 
 #elseif canImport(AppKit)
 
-struct BlockMathView: NSViewRepresentable {
+struct BlockMathView: NSViewRepresentable, Equatable {
   let latex: String
   let color: Color
   let pointSize: CGFloat
@@ -115,8 +139,12 @@ struct BlockMathView: NSViewRepresentable {
       return .zero
     }
     applyLatex(to: nsView)
-    let size = nsView.intrinsicContentSize
-    guard size.width.isFinite, size.height.isFinite,
+    var size: CGSize = .zero
+    var caughtError: NSError?
+    let succeeded = MathExceptionCatcher.tryBlock({
+      size = nsView.intrinsicContentSize
+    }, error: &caughtError)
+    guard succeeded, size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
       return nil
     }
@@ -128,7 +156,10 @@ struct BlockMathView: NSViewRepresentable {
       label.latex = ""
       return
     }
-    label.latex = latex
+    var caughtError: NSError?
+    let _ = MathExceptionCatcher.tryBlock({
+      label.latex = latex
+    }, error: &caughtError)
   }
 }
 
