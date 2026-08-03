@@ -117,7 +117,7 @@ struct BlockMathView: UIViewRepresentable, Equatable {
   private func applyLatex(to label: MTMathUILabel) -> CGSize? {
     guard MarkdownLatexSanitizer.shouldRenderBlockMath(latex) else {
       clearLabel(label)
-      onFailure?()
+      notifyFailure()
       return nil
     }
 
@@ -132,13 +132,13 @@ struct BlockMathView: UIViewRepresentable, Equatable {
         latex: latex
       )
       clearLabel(label)
-      onFailure?()
+      notifyFailure()
       return nil
     }
 
     guard let size = measuredSize(for: label) else {
       clearLabel(label)
-      onFailure?()
+      notifyFailure()
       return nil
     }
     return size
@@ -152,9 +152,10 @@ struct BlockMathView: UIViewRepresentable, Equatable {
   }
 
   private func measuredSize(for label: MTMathUILabel) -> CGSize? {
+    var rawSize: CGSize = .zero
     do {
       try MathExceptionCatcher.try {
-        label.sizeToFit()
+        rawSize = label.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
       }
     } catch {
       MathRenderDiagnostics.logBlockMath(
@@ -164,13 +165,18 @@ struct BlockMathView: UIViewRepresentable, Equatable {
       return nil
     }
 
-    let rawSize = label.bounds.size
     guard rawSize.width.isFinite, rawSize.height.isFinite,
           rawSize.width > 0, rawSize.height > 0 else {
       MathRenderDiagnostics.logBlockMath(source: "measuredSize/unrenderable", latex: latex)
       return nil
     }
     return CGSize(width: rawSize.width.rounded(.up), height: rawSize.height.rounded(.up) + 1)
+  }
+
+  private func notifyFailure() {
+    Task { @MainActor in
+      onFailure?()
+    }
   }
 }
 
@@ -219,19 +225,16 @@ struct BlockMathView: NSViewRepresentable, Equatable {
     guard MarkdownLatexSanitizer.shouldRenderBlockMath(latex) else {
       return .zero
     }
-    applyLatex(to: nsView)
     var size: CGSize = .zero
     do {
       try MathExceptionCatcher.try {
         size = nsView.intrinsicContentSize
       }
     } catch {
-      onFailure?()
       return nil
     }
     guard size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
-      onFailure?()
       return nil
     }
     return CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up) + 1)
@@ -240,7 +243,7 @@ struct BlockMathView: NSViewRepresentable, Equatable {
   private func applyLatex(to label: MTMathUILabel) {
     guard MarkdownLatexSanitizer.shouldRenderBlockMath(latex) else {
       label.latex = ""
-      onFailure?()
+      notifyFailure()
       return
     }
     do {
@@ -248,9 +251,15 @@ struct BlockMathView: NSViewRepresentable, Equatable {
         label.latex = latex
       }
       if label.mathList == nil {
-        onFailure?()
+        notifyFailure()
       }
     } catch {
+      notifyFailure()
+    }
+  }
+
+  private func notifyFailure() {
+    Task { @MainActor in
       onFailure?()
     }
   }

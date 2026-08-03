@@ -102,11 +102,8 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     label.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
     if success {
-      let measured = measuredAttachmentSize(proposedLineFragmentWidth: 300)
-      if measured.width > 0 && measured.height > 0 {
-        self.view = label
-        return
-      }
+      self.view = label
+      return
     }
 
     #if canImport(UIKit)
@@ -151,17 +148,12 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
   }
 
   private func measuredAttachmentSize(proposedLineFragmentWidth: CGFloat) -> CGSize {
-    let label: MTMathUILabel
-    if let existingLabel = view as? MTMathUILabel {
-      label = existingLabel
-    } else {
-      label = MTMathUILabel()
-      try? MathExceptionCatcher.try {
-        label.latex = self.latex
-      }
-      label.fontSize = fontSize
-      label.displayErrorInline = false
+    let label = MTMathUILabel()
+    try? MathExceptionCatcher.try {
+      label.latex = self.latex
     }
+    label.fontSize = fontSize
+    label.displayErrorInline = false
 
     var size: CGSize = .zero
     do {
@@ -187,6 +179,6 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     }
 
     MathRenderDiagnostics.logInlineMathIfInteresting(source: "attachmentBounds", latex: latex)
-    return CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up) + 1.0)
+    return CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up) + 1)
   }
 }

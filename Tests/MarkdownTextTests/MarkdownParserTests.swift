@@ -9,6 +9,7 @@
 //
 //  Created by Jun Yan on 6/13/25.
 //
+import Markdown
 @testable import SwiftStreamingMarkdown
 import SwiftUI
 import XCTest
@@ -71,15 +72,16 @@ afterafterafterafterafterafter
     \\index(D) = 0
     ```
     """
-    let parsed = await parser.parse(text: text, option: .init())
-    guard let first = parsed.document.children.first else {
-      XCTFail("Expected renderable child")
+    let parsed = await parser.parse(text: text, option: .init(speculativeRewrite: false))
+    guard let codeBlock = parsed.document.children.first(where: { _ in true }) as? CodeBlock else {
+      XCTFail("Expected CodeBlock element")
       return
     }
-    if case let .latex(_, content) = first {
+    let renderable = codeBlock.convert(attributeContainer: NSAttributeContainer(), config: MarkdownRenderConfig())
+    if case let .latex(_, content) = renderable {
       XCTAssertEqual(content, "\\index(D) = 0")
     } else {
-      XCTFail("Expected .latex renderable node, got \(first)")
+      XCTFail("Expected .latex renderable node, got \(renderable)")
     }
   }
 }
