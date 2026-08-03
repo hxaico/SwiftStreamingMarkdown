@@ -371,6 +371,7 @@ fileprivate extension String {
     return strippingBoxedLatex()
       .replacingNotEquiv()
       .replacingPmod()
+      .replacingOperatorName()
       .replacingTextCommand()
       .replacingfrac()
       .replacingFracShorthand()
@@ -421,6 +422,11 @@ fileprivate extension String {
     }
 
     return result
+  }
+
+  /// iosMath does not support amsmath `\operatorname`; map to `\mathrm` which renders roman text in math mode.
+  func replacingOperatorName() -> String {
+    return replacingOccurrences(of: "\\operatorname", with: "\\mathrm")
   }
 
   private static func matchingClosingBrace(in text: String, openingBraceAt contentStart: String.Index) -> String.Index? {

@@ -91,14 +91,42 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
   override func loadView() {
     MathRenderDiagnostics.logInlineMathIfInteresting(source: "loadView", latex: latex)
     let label = MTMathUILabel()
+    var success = false
     try? MathExceptionCatcher.try {
       label.latex = self.latex
+      success = label.mathList != nil
     }
     label.textColor = textColor
     label.displayErrorInline = false
     label.fontSize = fontSize
     label.setContentHuggingPriority(.defaultHigh, for: .vertical)
+
+    if success {
+      let measured = measuredAttachmentSize(proposedLineFragmentWidth: 300)
+      if measured.width > 0 && measured.height > 0 {
+        self.view = label
+        return
+      }
+    }
+
+    #if canImport(UIKit)
+    let fallbackLabel = UILabel()
+    fallbackLabel.text = latex
+    fallbackLabel.font = UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+    fallbackLabel.textColor = textColor
+    self.view = fallbackLabel
+    #elseif canImport(AppKit)
+    let fallbackLabel = NSTextField(labelWithString: latex)
+    fallbackLabel.isEditable = false
+    fallbackLabel.isSelectable = false
+    fallbackLabel.isBordered = false
+    fallbackLabel.drawsBackground = false
+    fallbackLabel.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+    fallbackLabel.textColor = textColor
+    self.view = fallbackLabel
+    #else
     self.view = label
+    #endif
   }
 
   override func attachmentBounds(for attributes: [NSAttributedString.Key: Any],
@@ -111,6 +139,15 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     let font = attributes[.font] as? MDFont ?? MDFont.systemFont(ofSize: fontSize)
     let yOffset = (font.xHeight - size.height) / 2.0
     return CGRect(x: 0, y: yOffset, width: size.width, height: size.height)
+  }
+
+  private func fallbackSize() -> CGSize {
+    let font = MDFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+    let text = latex as NSString
+    let textSize = text.size(withAttributes: [.font: font])
+    let width = max(textSize.width, 10).rounded(.up)
+    let height = max(textSize.height, fontSize).rounded(.up)
+    return CGSize(width: width, height: height)
   }
 
   private func measuredAttachmentSize(proposedLineFragmentWidth: CGFloat) -> CGSize {
@@ -140,13 +177,13 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
       }
     } catch {
       MathRenderDiagnostics.logInlineMath(source: "attachmentBounds/fallback", latex: latex)
-      return CGSize(width: 1, height: fontSize.rounded(.up))
+      return fallbackSize()
     }
 
     guard size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
       MathRenderDiagnostics.logInlineMath(source: "attachmentBounds/fallback", latex: latex)
-      return CGSize(width: 1, height: fontSize.rounded(.up))
+      return fallbackSize()
     }
 
     MathRenderDiagnostics.logInlineMathIfInteresting(source: "attachmentBounds", latex: latex)

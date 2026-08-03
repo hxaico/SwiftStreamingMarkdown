@@ -7,17 +7,86 @@ import SwiftUI
 import iosMath
 import MathExceptionCatcher
 
+struct BlockMathContainer: View {
+  let latex: String
+  let color: Color
+  let pointSize: CGFloat
+
+  @State private var didFail: Bool = false
+
+  init(
+    latex: String,
+    color: Color = Color.Theme.Foreground.Primary.Primary750,
+    pointSize: CGFloat = Typography.base.mdFont.pointSize
+  ) {
+    self.latex = latex
+    self.color = color
+    self.pointSize = pointSize
+  }
+
+  var body: some View {
+    Group {
+      if !MarkdownLatexSanitizer.shouldRenderBlockMath(latex) || didFail {
+        FallbackMathTextView(latex: latex)
+      } else {
+        ScrollView(.horizontal, showsIndicators: false) {
+          BlockMathView(
+            latex: latex,
+            color: color,
+            pointSize: pointSize,
+            onFailure: {
+              didFail = true
+            }
+          )
+          .fixedSize(horizontal: true, vertical: true)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .onChange(of: latex) { _ in
+      didFail = false
+    }
+  }
+}
+
+struct FallbackMathTextView: View {
+  @Environment(\.markdownConfig) private var config: MarkdownRenderConfig
+
+  let latex: String
+
+  var body: some View {
+    ScrollView(.horizontal, showsIndicators: false) {
+      Text(latex)
+        .font(Typography.codeTextFonts)
+        .foregroundStyle(config.mathStyle.textColor)
+        .padding(.vertical, 4)
+    }
+    .fixedSize(horizontal: false, vertical: true)
+  }
+}
+
 #if canImport(UIKit)
 
 struct BlockMathView: UIViewRepresentable, Equatable {
   let latex: String
   let color: Color
   let pointSize: CGFloat
+  let onFailure: (() -> Void)?
 
-  init(latex: String, color: Color = Color.Theme.Foreground.Primary.Primary750, pointSize: CGFloat = Typography.base.mdFont.pointSize) {
+  init(
+    latex: String,
+    color: Color = Color.Theme.Foreground.Primary.Primary750,
+    pointSize: CGFloat = Typography.base.mdFont.pointSize,
+    onFailure: (() -> Void)? = nil
+  ) {
     self.latex = latex
     self.color = color
     self.pointSize = pointSize
+    self.onFailure = onFailure
+  }
+
+  static func == (lhs: BlockMathView, rhs: BlockMathView) -> Bool {
+    lhs.latex == rhs.latex && lhs.color == rhs.color && lhs.pointSize == rhs.pointSize
   }
 
   func makeUIView(context: Context) -> MTMathUILabel {
@@ -48,6 +117,7 @@ struct BlockMathView: UIViewRepresentable, Equatable {
   private func applyLatex(to label: MTMathUILabel) -> CGSize? {
     guard MarkdownLatexSanitizer.shouldRenderBlockMath(latex) else {
       clearLabel(label)
+      onFailure?()
       return nil
     }
 
@@ -62,11 +132,13 @@ struct BlockMathView: UIViewRepresentable, Equatable {
         latex: latex
       )
       clearLabel(label)
+      onFailure?()
       return nil
     }
 
     guard let size = measuredSize(for: label) else {
       clearLabel(label)
+      onFailure?()
       return nil
     }
     return size
@@ -108,11 +180,22 @@ struct BlockMathView: NSViewRepresentable, Equatable {
   let latex: String
   let color: Color
   let pointSize: CGFloat
+  let onFailure: (() -> Void)?
 
-  init(latex: String, color: Color = Color.Theme.Foreground.Primary.Primary750, pointSize: CGFloat = Typography.base.mdFont.pointSize) {
+  init(
+    latex: String,
+    color: Color = Color.Theme.Foreground.Primary.Primary750,
+    pointSize: CGFloat = Typography.base.mdFont.pointSize,
+    onFailure: (() -> Void)? = nil
+  ) {
     self.latex = latex
     self.color = color
     self.pointSize = pointSize
+    self.onFailure = onFailure
+  }
+
+  static func == (lhs: BlockMathView, rhs: BlockMathView) -> Bool {
+    lhs.latex == rhs.latex && lhs.color == rhs.color && lhs.pointSize == rhs.pointSize
   }
 
   func makeNSView(context: Context) -> MTMathUILabel {
@@ -143,10 +226,12 @@ struct BlockMathView: NSViewRepresentable, Equatable {
         size = nsView.intrinsicContentSize
       }
     } catch {
+      onFailure?()
       return nil
     }
     guard size.width.isFinite, size.height.isFinite,
           size.width > 0, size.height > 0 else {
+      onFailure?()
       return nil
     }
     return CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up) + 1)
@@ -155,10 +240,18 @@ struct BlockMathView: NSViewRepresentable, Equatable {
   private func applyLatex(to label: MTMathUILabel) {
     guard MarkdownLatexSanitizer.shouldRenderBlockMath(latex) else {
       label.latex = ""
+      onFailure?()
       return
     }
-    try? MathExceptionCatcher.try {
-      label.latex = latex
+    do {
+      try MathExceptionCatcher.try {
+        label.latex = latex
+      }
+      if label.mathList == nil {
+        onFailure?()
+      }
+    } catch {
+      onFailure?()
     }
   }
 }

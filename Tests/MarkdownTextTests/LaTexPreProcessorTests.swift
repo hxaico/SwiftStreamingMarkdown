@@ -352,4 +352,24 @@ final class LaTexPreProcessorTests: XCTestCase {
     )
     XCTAssertEqual(processed, expected)
   }
+
+  func testOperatorNameSanitization() {
+    let input = "\\[\\operatorname{ind}(D_E)\\]"
+    let processed = preprocessor.processBlockMath(input: input)
+    XCTAssertTrue(processed.contains("\\mathrm{ind}"))
+  }
+
+  func testConfirmedServerAtiyahAndGRRFormulas() {
+    let atiyahInput = "\\[\\operatorname{ind}(D_E)=\\int_M \\widehat{A}(TM)\\,\\operatorname{ch}(E).\\]"
+    let atiyahProcessed = preprocessor.processBlockMath(input: atiyahInput)
+    XCTAssertTrue(atiyahProcessed.contains("\\mathrm{ind}"))
+    XCTAssertTrue(atiyahProcessed.contains("\\mathrm{ch}"))
+
+    let grrInput = "\\[\\operatorname{ch}\\bigl(f_!(E)\\bigr)\\, \\operatorname{Td}(T_Y)=f_*\\bigl(\\operatorname{ch}(E)\\, \\operatorname{Td}(T_X)\\bigr).\\]"
+    let grrProcessed = preprocessor.processBlockMath(input: grrInput)
+    XCTAssertTrue(grrProcessed.contains("\\mathrm{ch}"))
+    XCTAssertTrue(grrProcessed.contains("\\mathrm{Td}"))
+    XCTAssertFalse(grrProcessed.contains("\\bigl"))
+    XCTAssertFalse(grrProcessed.contains("\\bigr"))
+  }
 }
