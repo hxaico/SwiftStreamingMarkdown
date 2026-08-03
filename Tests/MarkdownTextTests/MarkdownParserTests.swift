@@ -64,4 +64,22 @@ afterafterafterafterafterafter
     XCTAssertEqual(parsed.document.childCount, 5)
     XCTAssertFalse(parsed.speculativeRewritten)
   }
+
+  func test_latex_code_block_conversion() async {
+    let text = """
+    ```latex
+    \\index(D) = 0
+    ```
+    """
+    let parsed = await parser.parse(text: text, option: .init())
+    guard let first = parsed.document.children.first else {
+      XCTFail("Expected renderable child")
+      return
+    }
+    if case let .latex(_, content) = first {
+      XCTAssertEqual(content, "\\index(D) = 0")
+    } else {
+      XCTFail("Expected .latex renderable node, got \(first)")
+    }
+  }
 }
