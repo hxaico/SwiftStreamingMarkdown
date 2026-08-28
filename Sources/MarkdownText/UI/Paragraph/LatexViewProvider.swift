@@ -94,7 +94,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     // Explicitly use .text mode (equivalent to \textstyle in TeX) so inline math attachments
     // render with compact inline metrics rather than large block equation (.display) metrics.
     label.fontSize = fontSize
-    label.labelMode = .text
+    label.mode = .text
     label.textColor = textColor
     label.displayErrorInline = false
     label.setContentHuggingPriority(.defaultHigh, for: .vertical)
@@ -155,7 +155,7 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
     let label = MTMathUILabel()
     // Explicitly match .text mode for attachment bounds measurement consistency.
     label.fontSize = fontSize
-    label.labelMode = .text
+    label.mode = .text
     label.displayErrorInline = false
     try? MathExceptionCatcher.try {
       label.latex = self.latex
