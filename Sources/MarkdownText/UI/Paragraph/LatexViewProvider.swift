@@ -91,15 +91,19 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
   override func loadView() {
     MathRenderDiagnostics.logInlineMathIfInteresting(source: "loadView", latex: latex)
     let label = MTMathUILabel()
+    // Explicitly use .text mode (equivalent to \textstyle in TeX) so inline math attachments
+    // render with compact inline metrics rather than large block equation (.display) metrics.
+    label.fontSize = fontSize
+    label.labelMode = .text
+    label.textColor = textColor
+    label.displayErrorInline = false
+    label.setContentHuggingPriority(.defaultHigh, for: .vertical)
+
     var success = false
     try? MathExceptionCatcher.try {
       label.latex = self.latex
       success = label.mathList != nil
     }
-    label.textColor = textColor
-    label.displayErrorInline = false
-    label.fontSize = fontSize
-    label.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
     if success {
       self.view = label
@@ -149,11 +153,13 @@ final class LatexViewProvider: NSTextAttachmentViewProvider {
 
   private func measuredAttachmentSize(proposedLineFragmentWidth: CGFloat) -> CGSize {
     let label = MTMathUILabel()
+    // Explicitly match .text mode for attachment bounds measurement consistency.
+    label.fontSize = fontSize
+    label.labelMode = .text
+    label.displayErrorInline = false
     try? MathExceptionCatcher.try {
       label.latex = self.latex
     }
-    label.fontSize = fontSize
-    label.displayErrorInline = false
 
     var size: CGSize = .zero
     do {
