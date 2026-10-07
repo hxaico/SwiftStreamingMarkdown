@@ -1,3 +1,4 @@
+# Runs on every pull request; its jobs gate merges to main.
 name: CI
 
 on:
